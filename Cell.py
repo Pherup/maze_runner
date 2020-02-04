@@ -12,4 +12,3 @@ class Cell:
 
     def setFireStatus(self, status):
         self.onFire = status
-        
