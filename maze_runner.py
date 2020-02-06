@@ -2,14 +2,28 @@ from cell import Cell
 from queue import PriorityQueue
 from prioritizeditem import PrioritizedItem
 import math
+import random
 
 board = []
 
-def create_board(dim):
+def create_board(dim,p):
     for row in range(dim):
         board.append([])
         for col in range(dim):
-            board[row].append(Cell(row,col))
+            board[row].append(Cell(row, col))
+            if (row == 0 and col == 0) or (row == dim-1 and col == dim-1):
+                continue
+            else:
+                if random.random() < p:
+                    board[row][col].set_block_status(True)
+    # for row in range(dim):
+    #     for col in range(dim):
+    #         if (row == 0 and col == 0) or (row == dim-1 and col == dim-1):
+    #             continue
+    #         else:
+    #             if random.random() < p:
+    #                 board[row][col].set_block_status(True)
+    assign_board_neighbors(dim)
 
 
 def assign_board_neighbors(dim):

@@ -11,10 +11,10 @@ class Cell:
         return "(" + str(self.row) + ", " + str(self.col) + ")"
 
     def set_block_status(self, status):
-        self.isBlocked = status
+        self.is_blocked = status
 
     def set_fire_status(self, status):
-        self.onFire = status
+        self.on_fire = status
 
     def set_neighbors(self,neighbors):
         self.neighbors = neighbors
