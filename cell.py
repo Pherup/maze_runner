@@ -3,8 +3,8 @@ class Cell:
     def __init__(self,row,col):
         self.row = row
         self.col = col
-        self.isBlocked = False
-        self.onFire = False
+        self.is_blocked = False
+        self.on_fire = False
         self.neighbors = []
 
     def __str__(self):

@@ -16,13 +16,17 @@ def assign_board_neighbors(dim):
     for row in range(dim):
         for col in range(dim):
             if row != 0:
-                board[row][col].add_neighbor(board[row - 1][col])
+                if not board[row - 1][col].is_blocked:
+                    board[row][col].add_neighbor(board[row - 1][col])
             if row != (dim-1):
-                board[row][col].add_neighbor(board[row + 1][col])
+                if not board[row + 1][col].is_blocked:
+                    board[row][col].add_neighbor(board[row + 1][col])
             if col != 0:
-                board[row][col].add_neighbor(board[row][col - 1])
+                if not board[row][col - 1].is_blocked:
+                    board[row][col].add_neighbor(board[row][col - 1])
             if col != (dim-1):
-                board[row][col].add_neighbor(board[row][col + 1])
+                if not board[row][col + 1].is_blocked:
+                    board[row][col].add_neighbor(board[row][col + 1])
 
 def populate_board():
     return None
