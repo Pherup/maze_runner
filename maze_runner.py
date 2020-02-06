@@ -10,6 +10,9 @@ def create_board(dim):
         board.append([])
         for col in range(dim):
             board[row].append(Cell(row,col))
+
+
+def assign_board_neighbors(dim):
     for row in range(dim):
         for col in range(dim):
             if row != 0:
@@ -80,6 +83,7 @@ def bfsBD():
 
 def main():
     create_board(4)
+    assign_board_neighbors(4)
     output = astar(board[0][0],board[3][3],euclidean_dist)
     for item in output:
         print(str(item))
