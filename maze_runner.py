@@ -99,12 +99,66 @@ def manhattan_dist(x1,y1,x2,y2):
 def bfsBD():
     return None
 
+def print_maze(path):
+    print("  \t", end='')
+    for i in range(len(board)):
+        print("\t" + str(i) + "\t", end='')
+    print()
+    for row in range(len(board)):
+        print("    ",  end='')
+        for i in range(len(board)):
+            print("________", end='')
+        print()
+        for col in range(len(board[0]) + 1):
+            if col == 0:
+                print(str(row) + ":\t|", end='')
+            else:
+                print("|", end='')
+            if col < len(board[0]) and board[row][col] in path:
+                print("\t\u2023\t", end='')
+            else:
+                if col < len(board[0]) and board[row][col].is_blocked:
+                    print("\tx\t", end='')
+                else:
+                    print("\t \t", end='')
+        print()
+    print("    ", end='')
+    for i in range(len(board)):
+        print("________", end='')
+    print()
+
+def print_maze_nopath():
+    print("  \t", end='')
+    for i in range(len(board)):
+        print("\t" + str(i) + "\t", end='')
+    print()
+    for row in range(len(board)):
+        print("    ",  end='')
+        for i in range(len(board)):
+            print("________", end='')
+        print()
+        for col in range(len(board[0]) + 1):
+            if col == 0:
+                print(str(row) + ":\t|", end='')
+            else:
+                print("|", end='')
+            if col < len(board[0]) and board[row][col].is_blocked:
+                print("\tx\t", end='')
+            else:
+                print("\t \t", end='')
+        print()
+    print("    ", end='')
+    for i in range(len(board)):
+        print("________", end='')
+    print()
+
 def main():
-    create_board(4)
-    assign_board_neighbors(4)
-    output = astar(board[0][0],board[3][3],euclidean_dist)
+    create_board(20,0.3)
+    print_maze_nopath()
+    output = astar(board[0][0],board[19][19],euclidean_dist)
+    print_maze(output)
     for item in output:
-        print(str(item))
+         print(str(item))
 
 main()
 
