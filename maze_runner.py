@@ -6,7 +6,8 @@ import random
 
 board = []
 
-def create_board(dim,p):
+
+def create_maze(dim, p):
     for row in range(dim):
         board.append([])
         for col in range(dim):
@@ -25,6 +26,9 @@ def create_board(dim,p):
     #                 board[row][col].set_block_status(True)
     assign_board_neighbors(dim)
 
+def create_hard_maze(dim, p):
+    return None
+
 
 def assign_board_neighbors(dim):
     for row in range(dim):
@@ -42,11 +46,10 @@ def assign_board_neighbors(dim):
                 if not board[row][col + 1].is_blocked:
                     board[row][col].add_neighbor(board[row][col + 1])
 
-def populate_board():
-    return None
 
 def dfs():
     return None
+
 
 def bfs():
     return None
@@ -89,15 +92,29 @@ def astar(start, goal, hFunc):
     return []
 
 
-
 def euclidean_dist(x1,y1,x2,y2):
     return math.sqrt(((x1-x2)**2) + ((y1-y2)**2))
+
 
 def manhattan_dist(x1,y1,x2,y2):
     return abs(x1-x2) + abs(y1-y2)
 
+
 def bfsBD():
     return None
+
+
+def fire_strat_1():
+    return None
+
+
+def fire_strat_2():
+    return None
+
+
+def compute_fire_movement():
+    return None
+
 
 def print_maze(path):
     print("  \t", end='')
@@ -127,6 +144,7 @@ def print_maze(path):
         print("________", end='')
     print()
 
+
 def print_maze_nopath():
     print("  \t", end='')
     for i in range(len(board)):
@@ -152,8 +170,9 @@ def print_maze_nopath():
         print("________", end='')
     print()
 
+
 def main():
-    create_board(20,0.3)
+    create_maze(20, 0.3)
     print_maze_nopath()
     output = astar(board[0][0],board[19][19],euclidean_dist)
     print_maze(output)
