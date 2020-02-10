@@ -199,9 +199,10 @@ def main():
     create_maze(20, 0.3)
     print_maze_nopath()
     output = bfs(board[0][0],board[19][19])
-    print_maze(output)
-    for item in output:
-         print(str(item))
+    if not (output == None):
+        print_maze(output)
+        for item in output:
+            print(str(item))
 
 main()
 
