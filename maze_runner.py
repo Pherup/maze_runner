@@ -3,6 +3,8 @@ from queue import PriorityQueue
 from prioritizeditem import PrioritizedItem
 import math
 import random
+from queue import Queue
+from queue import LifoQueue
 
 board = []
 
@@ -47,12 +49,44 @@ def assign_board_neighbors(dim):
                     board[row][col].add_neighbor(board[row][col + 1])
 
 
-def dfs():
-    return None
+def dfs(start, goal):
+    fringeq = LifoQueue(-1)
+    backward_mapping = dict()
+    visited = list()
+    fringeq.put(start)
+
+    while not fringeq.empty():
+        current = fringeq.get()
+        visited.append(start)
+        if current == goal:
+            return back_track(backward_mapping, start, current)
+        for neighbor in current.neighbors:
+            backward_mapping[neighbor] = current
+            fringeq.put(neighbor)
 
 
-def bfs():
-    return None
+def bfs(start, goal):
+    fringeq = Queue(-1)
+    backward_mapping = dict()
+    visited = list()
+    fringeq.put(start)
+
+    while not fringeq.empty():
+        current = fringeq.get()
+        visited.append(start)
+        if current == goal:
+            return back_track(backward_mapping, start, current)
+        for neighbor in current.neighbors:
+            backward_mapping[neighbor] = current
+            fringeq.put(neighbor)
+
+
+def back_track(backward_mapping, start, current):
+    path = [current]
+    while current != start:
+        current = backward_mapping[current]
+        path.insert(0, current)
+    return path
 
 def astar(start, goal, hFunc):
     fringeq = PriorityQueue(-1)
@@ -67,11 +101,7 @@ def astar(start, goal, hFunc):
     while not fringeq.empty():
         current = fringeq.get().item
         if current == goal:
-            path = [current]
-            while current != start:
-                current = backward_mapping[current]
-                path.insert(0, current)
-            return path
+            return back_track(backward_mapping, start, current)
         for neighbor in current.neighbors:
             try:
                 gscores[neighbor]
@@ -174,7 +204,7 @@ def print_maze_nopath():
 def main():
     create_maze(20, 0.3)
     print_maze_nopath()
-    output = astar(board[0][0],board[19][19],euclidean_dist)
+    output = bfs(board[0][0],board[19][19])
     print_maze(output)
     for item in output:
          print(str(item))
