@@ -49,36 +49,48 @@ def assign_board_neighbors(dim):
                     board[row][col].add_neighbor(board[row][col + 1])
 
 
-def dfs(start, goal):
-    fringeq = LifoQueue(-1)
-    backward_mapping = dict()
-    visited = list()
-    fringeq.put(start)
+# def dfs(start, goal):
+#     fringe = LifoQueue(-1)
+#     discovered = [start]
+#     backward_mapping = dict()
+#     fringe.put(start)
+#
+#     while not fringe.empty():
+#         current = fringe.get()
+#         if current == goal:
+#             return back_track(backward_mapping, start, current)
+#         for neighbor in current.neighbors:
+#             if neighbor not in discovered:
+#                 discovered.append(neighbor)
+#                 backward_mapping[neighbor] = current
+#                 fringe.put(neighbor)
 
-    while not fringeq.empty():
-        current = fringeq.get()
-        visited.append(start)
-        if current == goal:
-            return back_track(backward_mapping, start, current)
-        for neighbor in current.neighbors:
-            backward_mapping[neighbor] = current
-            fringeq.put(neighbor)
+def dfs(current, goal,path):
+    path.append(current)
+    if current == goal:
+        return path
+    for neighbor in current.neighbors:
+        if neighbor not in path:
+            dfs(neighbor,goal,path)
+
 
 
 def bfs(start, goal):
-    fringeq = Queue(-1)
+    fringe = Queue(-1)
+    discovered = [start]
     backward_mapping = dict()
-    visited = list()
-    fringeq.put(start)
+    fringe.put(start)
 
-    while not fringeq.empty():
-        current = fringeq.get()
-        visited.append(start)
+    while not fringe.empty():
+        current = fringe.get()
         if current == goal:
             return back_track(backward_mapping, start, current)
         for neighbor in current.neighbors:
-            backward_mapping[neighbor] = current
-            fringeq.put(neighbor)
+            if neighbor not in discovered:
+                discovered.append(neighbor)
+                backward_mapping[neighbor] = current
+                fringe.put(neighbor)
+
 
 
 def back_track(backward_mapping, start, current):
