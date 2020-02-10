@@ -6,6 +6,12 @@ import random
 from queue import Queue
 from queue import LifoQueue
 
+#TODO: Create Hard Maze
+#TODO: Bidirectional BFS
+#TODO: Fire Movement Do this before Fire Strategies
+#TODO: Fire startegy 1
+#TODO: Fire startegy 2
+
 board = []
 
 
@@ -19,13 +25,6 @@ def create_maze(dim, p):
             else:
                 if random.random() < p:
                     board[row][col].set_block_status(True)
-    # for row in range(dim):
-    #     for col in range(dim):
-    #         if (row == 0 and col == 0) or (row == dim-1 and col == dim-1):
-    #             continue
-    #         else:
-    #             if random.random() < p:
-    #                 board[row][col].set_block_status(True)
     assign_board_neighbors(dim)
 
 def create_hard_maze(dim, p):
@@ -47,23 +46,6 @@ def assign_board_neighbors(dim):
             if col != (dim-1):
                 if not board[row][col + 1].is_blocked:
                     board[row][col].add_neighbor(board[row][col + 1])
-
-
-# def dfs(start, goal):
-#     fringe = LifoQueue(-1)
-#     discovered = [start]
-#     backward_mapping = dict()
-#     fringe.put(start)
-#
-#     while not fringe.empty():
-#         current = fringe.get()
-#         if current == goal:
-#             return back_track(backward_mapping, start, current)
-#         for neighbor in current.neighbors:
-#             if neighbor not in discovered:
-#                 discovered.append(neighbor)
-#                 backward_mapping[neighbor] = current
-#                 fringe.put(neighbor)
 
 def dfs(current, goal,path):
     path.append(current)
