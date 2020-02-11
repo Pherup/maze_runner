@@ -140,74 +140,114 @@ def euclidean_dist(x1,y1,x2,y2):
 def manhattan_dist(x1, y1, x2, y2):
     return abs(x1-x2) + abs(y1-y2)
 
+# def bfsBD(start,goal):
+#     fringSt = PriorityQueue()
+#     fringEn = PriorityQueue()
+#     gscoresSt = dict();
+#     gscoresEn = dict();
+#     gscoresSt[start] = 0
+#     gscoresEn[goal] = 0
+#     backward_mappingF = dict()
+#     backward_mappingB = dict()
+#     fringSt.put(PrioritizedItem(gscoresSt[start], start))
+#     fringEn.put(PrioritizedItem(gscoresEn[goal], goal))
+#     while not fringSt.empty() and not fringEn.empty():
+#         currentF = fringSt.get().item
+#         currentB = fringEn.get().item
+#         for neighbor in currentF.neighbors:
+#             try:
+#                 gscoresSt[neighbor]
+#             except KeyError:
+#                 gscoresSt[neighbor] = math.inf
+#             try:
+#                 gscoresEn[neighbor]
+#             except KeyError:
+#                 gscoresEn[neighbor] = math.inf
+#             recalc_g = gscoresSt[currentF] + 1
+#             if gscoresSt[neighbor] != math.inf and gscoresEn[neighbor] != math.inf:
+#                 path = [neighbor]
+#                 path.insert(0, currentF)
+#                 currentTemp = neighbor
+#
+#                 while currentF != start:
+#                     currentF = backward_mappingF[currentF]
+#                     path.insert(0, currentF)
+#                 while currentTemp != goal:
+#                     currentTemp = backward_mappingB[currentTemp]
+#                     path.insert(len(path), currentTemp)
+#                 return path
+#             if recalc_g < gscoresSt[neighbor]:
+#                 backward_mappingF[neighbor] = currentF
+#                 gscoresSt[neighbor] = recalc_g
+#
+#                 for node in fringSt.queue:
+#                     if node.item == neighbor:
+#                         fringSt.queue.remove(node)
+#                         break
+#                 fringSt.put(PrioritizedItem(gscoresSt[neighbor], neighbor))
+#         for neighbor in currentB.neighbors:
+#             try:
+#                 gscoresSt[neighbor]
+#             except KeyError:
+#                 gscoresSt[neighbor] = math.inf
+#             try:
+#                 gscoresEn[neighbor]
+#             except KeyError:
+#                 gscoresEn[neighbor] = math.inf
+#             recalc_g = gscoresEn[currentB] + 1
+#
+#             if recalc_g < gscoresEn[neighbor]:
+#                 backward_mappingB[neighbor] = currentB
+#                 gscoresEn[neighbor] = recalc_g
+#
+#                 for node in fringEn.queue:
+#                     if node.item == neighbor:
+#                         fringEn.queue.remove(node)
+#                         break
+#                 fringEn.put(PrioritizedItem(gscoresEn[neighbor], neighbor))
+#
+#
+#     return []
+
+
 def bfsBD(start,goal):
-    fringSt = PriorityQueue()
-    fringEn = PriorityQueue()
-    gscoresSt = dict();
-    gscoresEn = dict();
-    gscoresSt[start] = 0
-    gscoresEn[goal] = 0
-    backward_mappingF = dict()
-    backward_mappingB = dict()
-    fringSt.put(PrioritizedItem(gscoresSt[start], start))
-    fringEn.put(PrioritizedItem(gscoresEn[goal], goal))
-    while not fringSt.empty() and not fringEn.empty():
-        currentF = fringSt.get().item
-        currentB = fringEn.get().item
-        for neighbor in currentF.neighbors:
-            try:
-                gscoresSt[neighbor]
-            except KeyError:
-                gscoresSt[neighbor] = math.inf
-            try:
-                gscoresEn[neighbor]
-            except KeyError:
-                gscoresEn[neighbor] = math.inf
-            recalc_g = gscoresSt[currentF] + 1
-            if gscoresSt[neighbor] != math.inf and gscoresEn[neighbor] != math.inf:
-                path = [neighbor]
-                path.insert(0, currentF)
-                currentTemp = neighbor
+    fringe_front = Queue(-1)
+    fringe_back = Queue(-1)
+    discovered_front = [start]
+    discovered_back = [goal]
+    backward_mapping = dict()
+    forward_mapping = dict()
+    fringe_front.put(start)
+    fringe_back.put(goal)
 
-                while currentF != start:
-                    currentF = backward_mappingF[currentF]
-                    path.insert(0, currentF)
-                while currentTemp != goal:
-                    currentTemp = backward_mappingB[currentTemp]
-                    path.insert(len(path), currentTemp)
-                return path
-            if recalc_g < gscoresSt[neighbor]:
-                backward_mappingF[neighbor] = currentF
-                gscoresSt[neighbor] = recalc_g
-
-                for node in fringSt.queue:
-                    if node.item == neighbor:
-                        fringSt.queue.remove(node)
-                        break
-                fringSt.put(PrioritizedItem(gscoresSt[neighbor], neighbor))
-        for neighbor in currentB.neighbors:
-            try:
-                gscoresSt[neighbor]
-            except KeyError:
-                gscoresSt[neighbor] = math.inf
-            try:
-                gscoresEn[neighbor]
-            except KeyError:
-                gscoresEn[neighbor] = math.inf
-            recalc_g = gscoresEn[currentB] + 1
-
-            if recalc_g < gscoresEn[neighbor]:
-                backward_mappingB[neighbor] = currentB
-                gscoresEn[neighbor] = recalc_g
-
-                for node in fringEn.queue:
-                    if node.item == neighbor:
-                        fringEn.queue.remove(node)
-                        break
-                fringEn.put(PrioritizedItem(gscoresEn[neighbor], neighbor))
-
-
-    return []
+    while not (fringe_front.empty() or fringe_back.empty()):
+        if not fringe_front.empty():
+            current_front = fringe_front.get()
+            for neighbor in current_front.neighbors:
+                if neighbor not in discovered_front:
+                    discovered_front.append(neighbor)
+                    backward_mapping[neighbor] = current_front
+                    fringe_front.put(neighbor)
+            for disc in discovered_front:
+                if disc in discovered_back:
+                    path_front_to_intersection = back_track(backward_mapping, start, disc)
+                    path_back_to_intersection = back_track(forward_mapping, goal, disc)
+                    path_back_to_intersection.reverse()
+                    return path_front_to_intersection + path_back_to_intersection
+        if not fringe_back.empty():
+            current_back = fringe_back.get()
+            for neighbor in current_back.neighbors:
+                if neighbor not in discovered_back:
+                    discovered_back.append(neighbor)
+                    forward_mapping[neighbor] = current_back
+                    fringe_back.put(neighbor)
+            for disc in discovered_front:
+                if disc in discovered_back:
+                    path_front_to_intersection = back_track(backward_mapping, start, disc)
+                    path_back_to_intersection = back_track(forward_mapping, goal, disc)
+                    path_back_to_intersection.reverse()
+                    return path_front_to_intersection + path_back_to_intersection
+    return None
 
 
 def fire_strat_1(q,num_tests):
@@ -384,8 +424,8 @@ def print_maze_nopath():
 
 
 if __name__ == '__main__':
-    print("Fire Strat 1 Failure Rate: " + str(fire_strat_1(optimal_q, 30)))
-    print("Fire Strat 2 Failure Rate: " + str(fire_strat_2(optimal_q, 30)))
+    # print("Fire Strat 1 Failure Rate: " + str(fire_strat_1(optimal_q, 30)))
+    # print("Fire Strat 2 Failure Rate: " + str(fire_strat_2(optimal_q, 30)))
 
 
 
@@ -414,13 +454,16 @@ if __name__ == '__main__':
     # print("\n\n\n\n\n")
     # print(results)
 
-    create_maze(20, 0.225)
-    print_maze_nopath()
-    output = astar(board[0][0],board[19][19],euclidean_dist)
-    if output is not None:
-        print_maze(output)
-        for item in output:
+    create_maze(20, 0)
+    output = []
+    output.append(astar(board[0][0], board[19][19], euclidean_dist))
+    output.append(bfsBD(board[0][0], board[19][19]))
+    # output1 = bfsBD(board[0][0], board[2][2])
+
+    output.append(bfs(board[0][0], board[19][19]))
+
+
+    for path in output:
+        print_maze(path)
+        for item in path:
             print(str(item))
-
-
-
