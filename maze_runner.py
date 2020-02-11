@@ -6,12 +6,11 @@ import random
 from queue import Queue
 import time
 import sys
+from multiprocessing import Process
+from multiprocessing import Queue as msQueue
 
 #TODO: Create Hard Maze
-#TODO: Bidirectional BFS
-#TODO: Fire Movement Do this before Fire Strategies
-#TODO: Fire startegy 1
-#TODO: Fire startegy 2
+
 
 
 sys.setrecursionlimit(10000)
@@ -24,7 +23,7 @@ fire_symbol = "\U0001F525"
 # fire_symbol = "#"
 optimal_dim = 105
 optimal_p = 0.225
-optimal_q = 0.1
+optimal_q = .1
 
 
 def create_maze(dim, p):
@@ -211,12 +210,11 @@ def bfsBD(start,goal):
     return []
 
 
-def fire_strat_1(q):
+def fire_strat_1(q,num_tests):
     global board
     fail_counter = 0
-    num_tests = 30
     for i in range(num_tests):
-        print(i)
+        print("\r Running Test "+str(i), end="")
         start = None
         goal = None
         fire_loc = None
@@ -245,58 +243,69 @@ def fire_strat_1(q):
         for cell in path:
             if cell.on_fire:
                 fail_counter += 1
-                print("FAILLLL")
+                # print("FAILLLL")
                 break
             compute_fire_movement(q)
+            path = path[1:]
             # print_maze(path)
         board = []
+    print()
     return (fail_counter/num_tests) * 100
 
 
-
-def fire_strat_2(q):
-    global board
+def fire_strat_2(q, num_tests):
     fail_counter = 0
-    num_tests = 30
+
+    processes = []
+    # print("starting ", end="")
     for i in range(num_tests):
-        print("\r" + str(i))
-        start = None
-        goal = None
-        fire_loc = None
-        path = None
-        while True:
-            create_maze(optimal_dim, optimal_p)
-            start = board[0][0]
-            goal = board[optimal_dim - 1][optimal_dim - 1]
-            fire_loc = (random.randint(0, optimal_dim - 1), random.randint(0, optimal_dim - 1))
-            if board[fire_loc[0]][fire_loc[1]].is_blocked or fire_loc == (0, 0) \
-                    or fire_loc == (optimal_dim - 1, optimal_dim - 1):
-                continue
-            else:
-                if astar(start, board[fire_loc[0]][fire_loc[1]], euclidean_dist) is None \
-                        or astar(start, goal, euclidean_dist) is None:
-                    continue
-                board[fire_loc[0]][fire_loc[1]].set_fire_status(True)
+        processes.append(Process(target=fire_strat_2_helper, args=(q,)))
+        processes[i].start()
+        # print("\r" + str(i), end="")
+    # print("\nJoining ", end="")
+    for p in processes:
+        p.join()
+        # print("#", end="")
+        # print(p.exitcode)
+        if p.exitcode == 1:
+            fail_counter += 1
+    # print("Fail Counter: " + str(fail_counter))
+    return (fail_counter/num_tests) * 100
 
-            path = astar(start, goal, euclidean_dist)
 
-            if path is None:
+def fire_strat_2_helper(q):
+    start = None
+    goal = None
+    fire_loc = None
+    path = None
+    while True:
+        create_maze(optimal_dim, optimal_p)
+        start = board[0][0]
+        goal = board[optimal_dim - 1][optimal_dim - 1]
+        fire_loc = (random.randint(0, optimal_dim - 1), random.randint(0, optimal_dim - 1))
+        if board[fire_loc[0]][fire_loc[1]].is_blocked or fire_loc == (0, 0) \
+                or fire_loc == (optimal_dim - 1, optimal_dim - 1):
+            continue
+        else:
+            if astar(start, board[fire_loc[0]][fire_loc[1]], euclidean_dist) is None \
+                    or astar(start, goal, euclidean_dist) is None:
                 continue
-            break
-        count = 0 #Delete later
-        while True:
-            if path is None or path[1].on_fire:
-                fail_counter += 1
-                print("\rFAILLLL")
-                break
-            if path[1] == goal:
-                break
-            count += 1
-            compute_fire_movement(optimal_q)
-            print("\rcomputing new path " + str(count), end="")
-            path = astar(path[1], goal, euclidean_dist)
-        board = []
-    return (fail_counter / num_tests) * 100
+            board[fire_loc[0]][fire_loc[1]].set_fire_status(True)
+
+        path = astar(start, goal, euclidean_dist)
+
+        if path is None:
+            continue
+        break
+    while True:
+        if path is None or path[1].on_fire:
+            sys.exit(1)
+            # return
+        if path[1] == goal:
+            sys.exit(0)
+            # return
+        compute_fire_movement(q)
+        path = astar(path[1], goal, euclidean_dist)
 
 
 def compute_fire_movement(q):
@@ -374,8 +383,9 @@ def print_maze_nopath():
     print()
 
 
-def main():
-    print(fire_strat_2(optimal_q))
+if __name__ == '__main__':
+    print("Fire Strat 1 Failure Rate: " + str(fire_strat_1(optimal_q, 30)))
+    print("Fire Strat 2 Failure Rate: " + str(fire_strat_2(optimal_q, 30)))
 
 
 
@@ -404,14 +414,13 @@ def main():
     # print("\n\n\n\n\n")
     # print(results)
 
-    # create_maze(2, 0.0)
-    # print_maze_nopath()
-    # output = astar(board[0][0],board[1][1],euclidean_dist)
-    # if not (output == None):
-    #     print_maze(output)
-    #     for item in output:
-    #         print(str(item))
+    create_maze(20, 0.225)
+    print_maze_nopath()
+    output = astar(board[0][0],board[19][19],euclidean_dist)
+    if output is not None:
+        print_maze(output)
+        for item in output:
+            print(str(item))
 
-main()
 
 
