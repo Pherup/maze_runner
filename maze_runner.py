@@ -11,6 +11,7 @@ from multiprocessing import Queue as msQueue
 import pygame
 
 #TODO: Create Hard Maze
+#TODO: Fire Maze Own Strategy
 
 # Colors
 WHITE = (255, 255, 255)
@@ -239,12 +240,13 @@ def bfsBD(start,goal):
                     discovered_front.append(neighbor)
                     backward_mapping[neighbor] = current_front
                     fringe_front.put(neighbor)
-            for disc in discovered_front:
-                if disc in discovered_back:
-                    path_front_to_intersection = back_track(backward_mapping, start, disc)
-                    path_back_to_intersection = back_track(forward_mapping, goal, disc)
-                    path_back_to_intersection.reverse()
-                    return path_front_to_intersection + path_back_to_intersection
+            intersect = intersection(discovered_front,discovered_back)
+            if intersect is not None:
+                disc = intersect[0]
+                path_front_to_intersection = back_track(backward_mapping, start, disc)
+                path_back_to_intersection = back_track(forward_mapping, goal, disc)
+                path_back_to_intersection.reverse()
+                return path_front_to_intersection + path_back_to_intersection
         if not fringe_back.empty():
             current_back = fringe_back.get()
             for neighbor in current_back.neighbors:
@@ -252,14 +254,22 @@ def bfsBD(start,goal):
                     discovered_back.append(neighbor)
                     forward_mapping[neighbor] = current_back
                     fringe_back.put(neighbor)
-            for disc in discovered_front:
-                if disc in discovered_back:
-                    path_front_to_intersection = back_track(backward_mapping, start, disc)
-                    path_back_to_intersection = back_track(forward_mapping, goal, disc)
-                    path_back_to_intersection.reverse()
-                    return path_front_to_intersection + path_back_to_intersection
+            intersect = intersection(discovered_front,discovered_back)
+            if intersect is not None:
+                disc = intersect[0]
+                path_front_to_intersection = back_track(backward_mapping, start, disc)
+                path_back_to_intersection = back_track(forward_mapping, goal, disc)
+                path_back_to_intersection.reverse()
+                return path_front_to_intersection + path_back_to_intersection
     return None
 
+
+def intersection(list1, list2):
+    list2_as_set = set(list2)
+    intersect = [value for value in list1 if value in list2_as_set]
+    if len(intersect) == 0:
+        return None
+    return intersect
 
 def fire_strat_1(q,num_tests):
     global board
@@ -486,56 +496,97 @@ def draw_maze(path):
     pygame.display.update()
 
 if __name__ == '__main__':
-    # print("Fire Strat 1 Failure Rate: " + str(fire_strat_1(optimal_q, 30)))
-    # print("Fire Strat 2 Failure Rate: " + str(fire_strat_2(optimal_q, 30)))
-
-    create_maze(20, 0)
-    output = []
-    output.append(astar(board[0][0], board[19][19], euclidean_dist))
-    output.append(bfsBD(board[0][0], board[19][19]))
-    # output1 = bfsBD(board[0][0], board[2][2])
-
-    output.append(bfs(board[0][0], board[19][19]))
 
 
-    for path in output:
-        print_maze(path)
-        for item in path:
-            print(str(item))
-    create_maze(optimal_dim, optimal_p)
-    running = True
-    path = astar(board[0][0], board[104][104], euclidean_dist)
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-        draw_maze(path)
-        fire_strat_1(optimal_q, 30)
-        running = False
-
-
-
-
-
+    if input("\n\nWelcome to our Maze Runner! To run the algorithm we used to find our dim "
+          "\npress the enter key press to continue or any other key followed by enter to continue\n") == "" :
+    # Find a map size (dim) that is large enough to produce maps that require some work to solve,
+    # but small enough that you can run each algorithm multiple times for a range of possible p values.
+    # How did you pick a dim? We picked Dim by looping through a bunch of different dims with a bunch of different
+    # p values we picked our dim based on which dim took a decent amount of average time to complete for each p value
     #Optimal Value finder: We Selected -- Dim: 105 p: 0.225 Fail: 20.0 AVG Time: 0.1652039000000002
-    # results = []
-    # for dim in range(15, 125):
-    #     if not dim % 5 == 0:
-    #         continue
-    #     for p in [2, 2.25, 2.5, 2.75, 3]:
-    #         fail_counter = 0
-    #         tests = 50
-    #         t0 = time.process_time()
-    #         for i in range(tests):
-    #             # print(i)
-    #             create_maze(dim, p/10)
-    #             if astar(board[0][0], board[dim - 1][dim - 1], euclidean_dist) is None:
-    #                 fail_counter += 1
-    #         percent = (fail_counter/tests) * 100
-    #         avgtime = ((time.process_time()-t0)/tests)
-    #         print("Dim: " + str(dim) + " p: " + str(p / 10) + " Fail: " + str(percent) + " AVG Time: " + str(avgtime))
-    #         results.append((dim, p/10, percent, avgtime))
-    #         if percent > 20:
-    #             break
-    # print("\n\n\n\n\n")
-    # print(results)
+        results = []
+        for dim in range(15, 125):
+            if not dim % 5 == 0:
+                continue
+            for p in [.2, .225, .25, .275, .3]:
+                fail_counter = 0
+                tests = 50
+                t0 = time.process_time()
+                for i in range(tests):
+                    # print(i)
+                    create_maze(dim, p)
+                    if astar(board[0][0], board[dim - 1][dim - 1], euclidean_dist) is None:
+                        fail_counter += 1
+                percent = (fail_counter/tests) * 100
+                avgtime = ((time.process_time()-t0)/tests)
+                print("Dim: " + str(dim) + " p: " + str(p / 10) + " Fail: " + str(percent) + " AVG Time: " + str(avgtime))
+                results.append((dim, p/10, percent, avgtime))
+                if percent > 20:
+                    break
+        print("\n\n\n\n\n")
+        print(results)
+
+    if input("\n\nTo generate shortest paths for dim = optimal (105), p = .2 "
+             "\npress enter, press any other key followed by enter to continue. "
+             "\nTo move to the next algorithm press the X to close the window. "
+             "\nThe Title box of the screen will tell you which algorithm\n") == "" :
+        create_maze(optimal_dim,optimal_p)
+
+        bfspath = bfs(board[0][0], board[104][104])
+        dfspath = dfs(board[0][0], board[104][104])
+        astarEDpath = astar(board[0][0], board[104][104], euclidean_dist)
+        astarMDpath = astar(board[0][0], board[104][104], manhattan_dist)
+        bfsBDpath = bfsBD(board[0][0], board[104][104])
+
+        pygame.display.set_caption('BFS')
+        draw_maze(bfspath)
+        running = True
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+
+        pygame.display.set_caption('DFS')
+        running = True
+        while running:
+            draw_maze(dfspath)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+
+        pygame.display.set_caption('Astar, Euclidean Dist')
+        running = True
+        while running:
+            draw_maze(astarEDpath)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+
+        pygame.display.set_caption('Astar, Manhattan Dist')
+        running = True
+        while running:
+            draw_maze(astarMDpath)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+
+        pygame.display.set_caption('Bidirectional BFS')
+        running = True
+        while running:
+            draw_maze(bfsBDpath)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+
+
+    # create_maze(optimal_dim, optimal_p)
+    # running = True
+    # path = bfsBD(board[0][0], board[104][104])
+    # print_maze(path)
+    # while running:
+    #     for event in pygame.event.get():
+    #         if event.type == pygame.QUIT:
+    #             running = False
+    #     draw_maze(path)
+
