@@ -8,10 +8,17 @@ import time
 import sys
 from multiprocessing import Process
 from multiprocessing import Queue as msQueue
+import pygame
 
 #TODO: Create Hard Maze
 
-
+# Colors
+WHITE = (255, 255, 255)
+GRAY = (128, 128, 128)
+BLACK = (0, 0, 0)
+RED = (255,0,00)
+GREEN = (0,250,0)
+BLUE = (0,0,255)
 
 sys.setrecursionlimit(10000)
 board = []
@@ -25,6 +32,10 @@ optimal_dim = 105
 optimal_p = 0.225
 optimal_q = .1
 
+pygame.init()
+screen_size = (optimal_dim*10, optimal_dim*10)
+width = 8
+screen = pygame.display.set_mode(screen_size)
 
 def create_maze(dim, p):
     global board
@@ -286,66 +297,104 @@ def fire_strat_1(q,num_tests):
                 # print("FAILLLL")
                 break
             compute_fire_movement(q)
+            draw_maze([path[0]])
             path = path[1:]
             # print_maze(path)
         board = []
     print()
     return (fail_counter/num_tests) * 100
 
-
 def fire_strat_2(q, num_tests):
-    fail_counter = 0
-
-    processes = []
-    # print("starting ", end="")
-    for i in range(num_tests):
-        processes.append(Process(target=fire_strat_2_helper, args=(q,)))
-        processes[i].start()
-        # print("\r" + str(i), end="")
-    # print("\nJoining ", end="")
-    for p in processes:
-        p.join()
-        # print("#", end="")
-        # print(p.exitcode)
-        if p.exitcode == 1:
-            fail_counter += 1
-    # print("Fail Counter: " + str(fail_counter))
-    return (fail_counter/num_tests) * 100
-
-
-def fire_strat_2_helper(q):
     start = None
     goal = None
     fire_loc = None
     path = None
-    while True:
-        create_maze(optimal_dim, optimal_p)
-        start = board[0][0]
-        goal = board[optimal_dim - 1][optimal_dim - 1]
-        fire_loc = (random.randint(0, optimal_dim - 1), random.randint(0, optimal_dim - 1))
-        if board[fire_loc[0]][fire_loc[1]].is_blocked or fire_loc == (0, 0) \
-                or fire_loc == (optimal_dim - 1, optimal_dim - 1):
-            continue
-        else:
-            if astar(start, board[fire_loc[0]][fire_loc[1]], euclidean_dist) is None \
-                    or astar(start, goal, euclidean_dist) is None:
+    fail_counter = 0
+    for i in range(num_tests):
+        while True:
+            create_maze(optimal_dim, optimal_p)
+            start = board[0][0]
+            goal = board[optimal_dim - 1][optimal_dim - 1]
+            fire_loc = (random.randint(0, optimal_dim - 1), random.randint(0, optimal_dim - 1))
+            if board[fire_loc[0]][fire_loc[1]].is_blocked or fire_loc == (0, 0) \
+                    or fire_loc == (optimal_dim - 1, optimal_dim - 1):
                 continue
-            board[fire_loc[0]][fire_loc[1]].set_fire_status(True)
+            else:
+                if astar(start, board[fire_loc[0]][fire_loc[1]], euclidean_dist) is None \
+                        or astar(start, goal, euclidean_dist) is None:
+                    continue
+                board[fire_loc[0]][fire_loc[1]].set_fire_status(True)
 
-        path = astar(start, goal, euclidean_dist)
+            path = astar(start, goal, euclidean_dist)
 
-        if path is None:
-            continue
-        break
-    while True:
-        if path is None or path[1].on_fire:
-            sys.exit(1)
-            # return
-        if path[1] == goal:
-            sys.exit(0)
-            # return
-        compute_fire_movement(q)
-        path = astar(path[1], goal, euclidean_dist)
+            if path is None:
+                continue
+            break
+        while True:
+            if path is None or path[0].on_fire:
+                fail_counter += 1
+            if path[1] == goal:
+                break
+            compute_fire_movement(q)
+            draw_maze([path[0]])
+            path = astar(path[1], goal, euclidean_dist)
+
+
+
+# Multi Process version To go quicker but does not display the maze!!
+# def fire_strat_2(q, num_tests):
+#     fail_counter = 0
+#
+#     processes = []
+#     # print("starting ", end="")
+#     for i in range(num_tests):
+#         processes.append(Process(target=fire_strat_2_helper, args=(q,)))
+#         processes[i].start()
+#         # print("\r" + str(i), end="")
+#     # print("\nJoining ", end="")
+#     for p in processes:
+#         p.join()
+#         # print("#", end="")
+#         # print(p.exitcode)
+#         if p.exitcode == 1:
+#             fail_counter += 1
+#     # print("Fail Counter: " + str(fail_counter))
+#     return (fail_counter/num_tests) * 100
+#
+#
+# def fire_strat_2_helper(q):
+#     start = None
+#     goal = None
+#     fire_loc = None
+#     path = None
+#     while True:
+#         create_maze(optimal_dim, optimal_p)
+#         start = board[0][0]
+#         goal = board[optimal_dim - 1][optimal_dim - 1]
+#         fire_loc = (random.randint(0, optimal_dim - 1), random.randint(0, optimal_dim - 1))
+#         if board[fire_loc[0]][fire_loc[1]].is_blocked or fire_loc == (0, 0) \
+#                 or fire_loc == (optimal_dim - 1, optimal_dim - 1):
+#             continue
+#         else:
+#             if astar(start, board[fire_loc[0]][fire_loc[1]], euclidean_dist) is None \
+#                     or astar(start, goal, euclidean_dist) is None:
+#                 continue
+#             board[fire_loc[0]][fire_loc[1]].set_fire_status(True)
+#
+#         path = astar(start, goal, euclidean_dist)
+#
+#         if path is None:
+#             continue
+#         break
+#     while True:
+#         if path is None or path[1].on_fire:
+#             sys.exit(1)
+#             # return
+#         if path[1] == goal:
+#             sys.exit(0)
+#             # return
+#         compute_fire_movement(q)
+#         path = astar(path[1], goal, euclidean_dist)
 
 
 def compute_fire_movement(q):
@@ -361,7 +410,6 @@ def compute_fire_movement(q):
                 p = 1 - ((1 - q) ** on_fire_count)
                 if random.random() < p:
                     cell.set_fire_status(True)
-
 
 
 def print_maze(path):
@@ -422,10 +470,48 @@ def print_maze_nopath():
         print("________", end='')
     print()
 
+def draw_maze(path):
+    if path is None:
+        return
+    for row in board:
+        for c in row:
+            if c.is_blocked:
+                pygame.draw.rect(screen, BLACK, (c.row * width, c.col * width, width, width))
+            elif c.on_fire:
+                pygame.draw.rect(screen, RED, (c.row * width, c.col * width, width, width))
+            elif c in path:
+                pygame.draw.rect(screen, GREEN, (c.row * width, c.col * width, width, width))
+            else:
+                pygame.draw.rect(screen, WHITE, (c.row * width, c.col * width, width, width))
+    pygame.display.update()
 
 if __name__ == '__main__':
     # print("Fire Strat 1 Failure Rate: " + str(fire_strat_1(optimal_q, 30)))
     # print("Fire Strat 2 Failure Rate: " + str(fire_strat_2(optimal_q, 30)))
+
+    create_maze(20, 0)
+    output = []
+    output.append(astar(board[0][0], board[19][19], euclidean_dist))
+    output.append(bfsBD(board[0][0], board[19][19]))
+    # output1 = bfsBD(board[0][0], board[2][2])
+
+    output.append(bfs(board[0][0], board[19][19]))
+
+
+    for path in output:
+        print_maze(path)
+        for item in path:
+            print(str(item))
+    create_maze(optimal_dim, optimal_p)
+    running = True
+    path = astar(board[0][0], board[104][104], euclidean_dist)
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+        draw_maze(path)
+        fire_strat_1(optimal_q, 30)
+        running = False
 
 
 
@@ -453,17 +539,3 @@ if __name__ == '__main__':
     #             break
     # print("\n\n\n\n\n")
     # print(results)
-
-    create_maze(20, 0)
-    output = []
-    output.append(astar(board[0][0], board[19][19], euclidean_dist))
-    output.append(bfsBD(board[0][0], board[19][19]))
-    # output1 = bfsBD(board[0][0], board[2][2])
-
-    output.append(bfs(board[0][0], board[19][19]))
-
-
-    for path in output:
-        print_maze(path)
-        for item in path:
-            print(str(item))
