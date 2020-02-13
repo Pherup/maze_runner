@@ -4,22 +4,23 @@ from prioritizeditem import PrioritizedItem
 import math
 import random
 from queue import Queue
+from queue import LifoQueue
 import time
 import sys
 from multiprocessing import Process
 from multiprocessing import Queue as msQueue
 import pygame
 
-#TODO: Create Hard Maze
-#TODO: Fire Maze Own Strategy
+# TODO: Create Hard Maze
+# TODO: Fire Maze Own Strategy
 
 # Colors
 WHITE = (255, 255, 255)
 GRAY = (128, 128, 128)
 BLACK = (0, 0, 0)
-RED = (255,0,00)
-GREEN = (0,250,0)
-BLUE = (0,0,255)
+RED = (255, 0, 00)
+GREEN = (0, 250, 0)
+BLUE = (0, 0, 255)
 
 sys.setrecursionlimit(10000)
 board = []
@@ -29,14 +30,19 @@ block_symbol = "\u274C"
 # block_symbol = "x"
 fire_symbol = "\U0001F525"
 # fire_symbol = "#"
-optimal_dim = 105
+optimal_dim = 20
 optimal_p = 0.225
 optimal_q = .1
+p0 = .3
 
 pygame.init()
-screen_size = (optimal_dim*10, optimal_dim*10)
 width = 8
+screen_size = (optimal_dim * width + 10, optimal_dim * width +10 )
 screen = pygame.display.set_mode(screen_size)
+screen.fill(BLUE)
+
+max_fringe = 0
+
 
 def create_maze(dim, p):
     global board
@@ -45,12 +51,13 @@ def create_maze(dim, p):
         board.append([])
         for col in range(dim):
             board[row].append(Cell(row, col))
-            if (row == 0 and col == 0) or (row == dim-1 and col == dim-1):
+            if (row == 0 and col == 0) or (row == dim - 1 and col == dim - 1):
                 continue
             else:
                 if random.random() < p:
                     board[row][col].set_block_status(True)
     assign_board_neighbors(dim)
+
 
 def create_hard_maze(dim, p):
     return None
@@ -62,27 +69,47 @@ def assign_board_neighbors(dim):
             if row != 0:
                 if not board[row - 1][col].is_blocked:
                     board[row][col].add_neighbor(board[row - 1][col])
-            if row != (dim-1):
+            if row != (dim - 1):
                 if not board[row + 1][col].is_blocked:
                     board[row][col].add_neighbor(board[row + 1][col])
             if col != 0:
                 if not board[row][col - 1].is_blocked:
                     board[row][col].add_neighbor(board[row][col - 1])
-            if col != (dim-1):
+            if col != (dim - 1):
                 if not board[row][col + 1].is_blocked:
                     board[row][col].add_neighbor(board[row][col + 1])
 
-def dfs(start, goal):
-    return dfs_helper(start, goal, [])
 
-def dfs_helper(current, goal,path):
-    path.append(current)
-    if current == goal:
-        return path
-    for neighbor in current.neighbors:
-        if neighbor not in path:
-            dfs_helper(neighbor,goal,path)
+# def dfs(start, goal):
+#     return dfs_helper(start, goal, [])
+#
+#
+# def dfs_helper(current, goal, p):
+#     p.append(current)
+#     if current == goal:
+#         #print("returned")
+#         return p
+#     for neighbor in current.neighbors:
+#         if neighbor not in p:
+#             #print("looking at neighbors")
+#             return dfs_helper(neighbor, goal, p)
+#     return None
 
+def dfs(start,goal):
+    fringe = LifoQueue(-1)
+    discovered = [start]
+    backward_mapping = dict()
+    fringe.put(start)
+
+    while not fringe.empty():
+        current = fringe.get()
+        if current == goal:
+            return back_track(backward_mapping, start, current)
+        for neighbor in current.neighbors:
+            if neighbor not in discovered:
+                discovered.append(neighbor)
+                backward_mapping[neighbor] = current
+                fringe.put(neighbor)
 
 
 def bfs(start, goal):
@@ -102,13 +129,13 @@ def bfs(start, goal):
                 fringe.put(neighbor)
 
 
-
 def back_track(backward_mapping, start, current):
     path = [current]
     while current != start:
         current = backward_mapping[current]
         path.insert(0, current)
     return path
+
 
 def astar(start, goal, hFunc):
     fringeq = PriorityQueue(-1)
@@ -145,12 +172,13 @@ def astar(start, goal, hFunc):
     return None
 
 
-def euclidean_dist(x1,y1,x2,y2):
-    return math.sqrt(((x1-x2)**2) + ((y1-y2)**2))
+def euclidean_dist(x1, y1, x2, y2):
+    return math.sqrt(((x1 - x2) ** 2) + ((y1 - y2) ** 2))
 
 
 def manhattan_dist(x1, y1, x2, y2):
-    return abs(x1-x2) + abs(y1-y2)
+    return abs(x1 - x2) + abs(y1 - y2)
+
 
 # def bfsBD(start,goal):
 #     fringSt = PriorityQueue()
@@ -222,7 +250,7 @@ def manhattan_dist(x1, y1, x2, y2):
 #     return []
 
 
-def bfsBD(start,goal):
+def bfsBD(start, goal):
     fringe_front = Queue(-1)
     fringe_back = Queue(-1)
     discovered_front = [start]
@@ -240,7 +268,7 @@ def bfsBD(start,goal):
                     discovered_front.append(neighbor)
                     backward_mapping[neighbor] = current_front
                     fringe_front.put(neighbor)
-            intersect = intersection(discovered_front,discovered_back)
+            intersect = intersection(discovered_front, discovered_back)
             if intersect is not None:
                 disc = intersect[0]
                 path_front_to_intersection = back_track(backward_mapping, start, disc)
@@ -254,7 +282,7 @@ def bfsBD(start,goal):
                     discovered_back.append(neighbor)
                     forward_mapping[neighbor] = current_back
                     fringe_back.put(neighbor)
-            intersect = intersection(discovered_front,discovered_back)
+            intersect = intersection(discovered_front, discovered_back)
             if intersect is not None:
                 disc = intersect[0]
                 path_front_to_intersection = back_track(backward_mapping, start, disc)
@@ -271,11 +299,13 @@ def intersection(list1, list2):
         return None
     return intersect
 
-def fire_strat_1(q,num_tests):
+
+def fire_strat_1(q, num_tests, display):
+    pygame.display.set_caption('Fire Strategy 1')
     global board
     fail_counter = 0
     for i in range(num_tests):
-        print("\r Running Test "+str(i), end="")
+        print("\r Running Test " + str(i), end="")
         start = None
         goal = None
         fire_loc = None
@@ -286,7 +316,7 @@ def fire_strat_1(q,num_tests):
             goal = board[optimal_dim - 1][optimal_dim - 1]
             fire_loc = (random.randint(0, optimal_dim - 1), random.randint(0, optimal_dim - 1))
             if board[fire_loc[0]][fire_loc[1]].is_blocked or fire_loc == (0, 0) \
-                    or fire_loc == (optimal_dim-1, optimal_dim-1):
+                    or fire_loc == (optimal_dim - 1, optimal_dim - 1):
                 continue
             else:
                 if astar(start, board[fire_loc[0]][fire_loc[1]], euclidean_dist) is None \
@@ -307,14 +337,17 @@ def fire_strat_1(q,num_tests):
                 # print("FAILLLL")
                 break
             compute_fire_movement(q)
-            draw_maze([path[0]])
+            if display:
+                draw_maze([path[0]])
             path = path[1:]
             # print_maze(path)
         board = []
     print()
-    return (fail_counter/num_tests) * 100
+    return (fail_counter / num_tests) * 100
+
 
 def fire_strat_2(q, num_tests):
+    pygame.display.set_caption('Fire Strategy 2')
     start = None
     goal = None
     fire_loc = None
@@ -343,68 +376,67 @@ def fire_strat_2(q, num_tests):
         while True:
             if path is None or path[0].on_fire:
                 fail_counter += 1
-            if path[1] == goal:
+            elif path[1] == goal:
                 break
             compute_fire_movement(q)
             draw_maze([path[0]])
             path = astar(path[1], goal, euclidean_dist)
 
 
-
 # Multi Process version To go quicker but does not display the maze!!
-# def fire_strat_2(q, num_tests):
-#     fail_counter = 0
-#
-#     processes = []
-#     # print("starting ", end="")
-#     for i in range(num_tests):
-#         processes.append(Process(target=fire_strat_2_helper, args=(q,)))
-#         processes[i].start()
-#         # print("\r" + str(i), end="")
-#     # print("\nJoining ", end="")
-#     for p in processes:
-#         p.join()
-#         # print("#", end="")
-#         # print(p.exitcode)
-#         if p.exitcode == 1:
-#             fail_counter += 1
-#     # print("Fail Counter: " + str(fail_counter))
-#     return (fail_counter/num_tests) * 100
-#
-#
-# def fire_strat_2_helper(q):
-#     start = None
-#     goal = None
-#     fire_loc = None
-#     path = None
-#     while True:
-#         create_maze(optimal_dim, optimal_p)
-#         start = board[0][0]
-#         goal = board[optimal_dim - 1][optimal_dim - 1]
-#         fire_loc = (random.randint(0, optimal_dim - 1), random.randint(0, optimal_dim - 1))
-#         if board[fire_loc[0]][fire_loc[1]].is_blocked or fire_loc == (0, 0) \
-#                 or fire_loc == (optimal_dim - 1, optimal_dim - 1):
-#             continue
-#         else:
-#             if astar(start, board[fire_loc[0]][fire_loc[1]], euclidean_dist) is None \
-#                     or astar(start, goal, euclidean_dist) is None:
-#                 continue
-#             board[fire_loc[0]][fire_loc[1]].set_fire_status(True)
-#
-#         path = astar(start, goal, euclidean_dist)
-#
-#         if path is None:
-#             continue
-#         break
-#     while True:
-#         if path is None or path[1].on_fire:
-#             sys.exit(1)
-#             # return
-#         if path[1] == goal:
-#             sys.exit(0)
-#             # return
-#         compute_fire_movement(q)
-#         path = astar(path[1], goal, euclidean_dist)
+def fire_strat_2_multi_proc(q, num_tests):
+    fail_counter = 0
+
+    processes = []
+    # print("starting ", end="")
+    for i in range(num_tests):
+        processes.append(Process(target=fire_strat_2_helper, args=(q,)))
+        processes[i].start()
+        # print("\r" + str(i), end="")
+    # print("\nJoining ", end="")
+    for p in processes:
+        p.join()
+        # print("#", end="")
+        # print(p.exitcode)
+        if p.exitcode == 1:
+            fail_counter += 1
+    # print("Fail Counter: " + str(fail_counter))
+    return (fail_counter / num_tests) * 100
+
+
+def fire_strat_2_helper(q):
+    start = None
+    goal = None
+    fire_loc = None
+    path = None
+    while True:
+        create_maze(optimal_dim, optimal_p)
+        start = board[0][0]
+        goal = board[optimal_dim - 1][optimal_dim - 1]
+        fire_loc = (random.randint(0, optimal_dim - 1), random.randint(0, optimal_dim - 1))
+        if board[fire_loc[0]][fire_loc[1]].is_blocked or fire_loc == (0, 0) \
+                or fire_loc == (optimal_dim - 1, optimal_dim - 1):
+            continue
+        else:
+            if astar(start, board[fire_loc[0]][fire_loc[1]], euclidean_dist) is None \
+                    or astar(start, goal, euclidean_dist) is None:
+                continue
+            board[fire_loc[0]][fire_loc[1]].set_fire_status(True)
+
+        path = astar(start, goal, euclidean_dist)
+
+        if path is None:
+            continue
+        break
+    while True:
+        if path is None or path[1].on_fire:
+            sys.exit(1)
+            # return
+        if path[1] == goal:
+            sys.exit(0)
+            # return
+        compute_fire_movement(q)
+        path = astar(path[1], goal, euclidean_dist)
 
 
 def compute_fire_movement(q):
@@ -428,7 +460,7 @@ def print_maze(path):
         print("\t" + str(i) + "\t", end='')
     print()
     for row in range(len(board)):
-        print("    ",  end='')
+        print("    ", end='')
         for i in range(len(board)):
             print("________", end='')
         print()
@@ -459,7 +491,7 @@ def print_maze_nopath():
         print("\t" + str(i) + "\t", end='')
     print()
     for row in range(len(board)):
-        print("    ",  end='')
+        print("    ", end='')
         for i in range(len(board)):
             print("________", end='')
         print()
@@ -480,6 +512,7 @@ def print_maze_nopath():
         print("________", end='')
     print()
 
+
 def draw_maze(path):
     if path is None:
         return
@@ -495,54 +528,75 @@ def draw_maze(path):
                 pygame.draw.rect(screen, WHITE, (c.row * width, c.col * width, width, width))
     pygame.display.update()
 
+
 if __name__ == '__main__':
 
+    create_maze(3,0)
+    path = dfs(board[0][0],board[2][2])
+    print_maze(path)
 
     if input("\n\nWelcome to our Maze Runner! To run the algorithm we used to find our dim "
-          "\npress the enter key press to continue or any other key followed by enter to continue\n") == "" :
-    # Find a map size (dim) that is large enough to produce maps that require some work to solve,
-    # but small enough that you can run each algorithm multiple times for a range of possible p values.
-    # How did you pick a dim? We picked Dim by looping through a bunch of different dims with a bunch of different
-    # p values we picked our dim based on which dim took a decent amount of average time to complete for each p value
-    #Optimal Value finder: We Selected -- Dim: 105 p: 0.225 Fail: 20.0 AVG Time: 0.1652039000000002
+             "\npress the enter key press to continue or any other key followed by enter to continue\n") == "":
+        # Find a map size (dim) that is large enough to produce maps that require some work to solve,
+        # but small enough that you can run each algorithm multiple times for a range of possible p values.
+        # How did you pick a dim? We picked Dim by looping through a bunch of different dims with a bunch of different
+        # p values we picked our dim based on which dim took a decent amount of average time to complete for each p value
+        # Optimal Value finder: We Selected -- Dim: 105 p: 0.225 Fail: 20.0 AVG Time: 0.1652039000000002
         results = []
-        for dim in range(15, 125):
+        for dim in range(15, 70):
             if not dim % 5 == 0:
                 continue
             for p in [.2, .225, .25, .275, .3]:
                 fail_counter = 0
                 tests = 50
-                t0 = time.process_time()
+                total_time = 0
                 for i in range(tests):
                     # print(i)
                     create_maze(dim, p)
-                    if astar(board[0][0], board[dim - 1][dim - 1], euclidean_dist) is None:
+                    t0 = time.process_time()
+                    if bfs(board[0][0], board[dim - 1][dim - 1]) is None:
                         fail_counter += 1
-                percent = (fail_counter/tests) * 100
-                avgtime = ((time.process_time()-t0)/tests)
-                print("Dim: " + str(dim) + " p: " + str(p / 10) + " Fail: " + str(percent) + " AVG Time: " + str(avgtime))
-                results.append((dim, p/10, percent, avgtime))
-                if percent > 20:
+                    dfs(board[0][0], board[dim - 1][dim - 1])
+                    astar(board[0][0], board[dim - 1][dim - 1], euclidean_dist)
+                    astar(board[0][0], board[dim - 1][dim - 1], manhattan_dist)
+                    bfsBD(board[0][0], board[dim - 1][dim - 1])
+                    total_time += (time.process_time() - t0)
+                avgtime = (total_time / tests / 5)
+                percent = (fail_counter / tests) * 100
+                print(
+                    "Dim: " + str(dim) + " p: " + str(p) + " Fail: " + str(percent) + " AVG Time: " + str(avgtime))
+                results.append((dim, p, percent, avgtime))
+                if percent > 25:
                     break
         print("\n\n\n\n\n")
-        print(results)
+        #print(results)
 
-    if input("\n\nTo generate shortest paths for dim = optimal (105), p = .2 "
+    if input("\n\nTo generate shortest paths for dim = optimal (60), p = .2 "
              "\npress enter, press any other key followed by enter to continue. "
              "\nTo move to the next algorithm press the X to close the window. "
-             "\nThe Title box of the screen will tell you which algorithm\n") == "" :
-        create_maze(optimal_dim,optimal_p)
+             "\nThe Title box of the screen will tell you which algorithm\n") == "":
+        bfspath = None
+        while True:
+            create_maze(optimal_dim, optimal_p)
+            bfspath = bfs(board[0][0], board[optimal_dim - 1][optimal_dim - 1])
+            if bfspath is not None:
+                break
 
-        bfspath = bfs(board[0][0], board[104][104])
-        dfspath = dfs(board[0][0], board[104][104])
-        astarEDpath = astar(board[0][0], board[104][104], euclidean_dist)
-        astarMDpath = astar(board[0][0], board[104][104], manhattan_dist)
-        bfsBDpath = bfsBD(board[0][0], board[104][104])
+        dfspath = dfs(board[0][0], board[optimal_dim-1][optimal_dim-1])
+        astarEDpath = astar(board[0][0], board[optimal_dim-1][optimal_dim-1], euclidean_dist)
+        astarMDpath = astar(board[0][0], board[optimal_dim-1][optimal_dim-1], manhattan_dist)
+        bfsBDpath = bfsBD(board[0][0], board[optimal_dim-1][optimal_dim-1])
+
+        print("BFS Path Length: " + str(len(bfspath)))
+        print("DFS Path Length: " + str(len(dfspath)))
+        print("A* ED Path Length: " + str(len(astarEDpath)))
+        print("A* MD Path Length: " + str(len(astarMDpath)))
+        print("BFSBD Path Length: " + str(len(bfsBDpath)))
 
         pygame.display.set_caption('BFS')
-        draw_maze(bfspath)
         running = True
         while running:
+            draw_maze(bfspath)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
@@ -580,6 +634,62 @@ if __name__ == '__main__':
                     running = False
 
 
+    try:
+        dim = int(input("\n\nTo run maze solvability depending on p enter the dim you would like to "
+                              "run our algorithm with. Enter the Dim to start enter anything else to continue\n"))
+        num_tests = 50
+        p = 0
+        while p <= 1:
+            fail_counter = 0
+            for i in range(num_tests):
+                create_maze(dim, p)
+                path = astar(board[0][0],board[dim-1][dim-1],euclidean_dist)
+                if path is None:
+                    fail_counter += 1
+            print(str(p) + "\t" + str(100 - ((fail_counter/num_tests) *100)))
+            p += .005
+            p = round(p, 3)
+    except ValueError:
+        None
+
+
+    try:
+        dim = int(input("\n\nTo run path length vs maze density from [0,p0] enter the dim you would like to"
+                        "run out algorithm with. Enter the Dim to start, enter anything else to continue \n"))
+        num_tests = 50
+        p = 0
+        while p <= p0:
+            length = 0
+            for i in range(num_tests):
+                path = None
+                while path is None:
+                    create_maze(dim, p)
+                    path = astar(board[0][0],board[dim-1][dim-1],euclidean_dist)
+                length += len(path)
+            print(str(p) + "\t" + str(round(length/num_tests, 2)))
+            p += .005
+            p = round(p, 3)
+    except ValueError:
+        None
+
+
+    try:
+        num_tests = int(input("\n\nTo run fire Strategy 1 enter the number of times you want it to run "
+                              "\nand press enter otherwise to continue hit any other key followed by enter \n"))
+        if input("\nWould you like to display all the tests? (it runs significantly slower when displaying) "
+                 "enter \"y\" for Yes and enter anything else for No") == "y":
+            fire_strat_1(optimal_q, num_tests, True)
+        else:
+            fire_strat_1(optimal_q, num_tests, True)
+    except ValueError:
+        None
+    try:
+        num_tests = int(input("\n\nTo run fire Strategy 2 enter the number of times you want it to run "
+                              "\nand press enter otherwise to continue hit any other key followed by enter \n"))
+        fire_strat_2(optimal_q, num_tests)
+    except ValueError:
+        None
+
     # create_maze(optimal_dim, optimal_p)
     # running = True
     # path = bfsBD(board[0][0], board[104][104])
@@ -589,4 +699,3 @@ if __name__ == '__main__':
     #         if event.type == pygame.QUIT:
     #             running = False
     #     draw_maze(path)
-
