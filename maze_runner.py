@@ -14,6 +14,8 @@ import pygame
 
 # TODO: Create Hard Maze
 # TODO: Fire Maze Own Strategy
+# TODO: Plot Data for heuristics
+# TODO: improved DFS
 
 # Colors
 WHITE = (255, 255, 255)
@@ -40,6 +42,9 @@ pygame.init()
 width = 8
 screen_size = (optimal_dim * width + 10, optimal_dim * width +10 )
 screen = pygame.display.set_mode(screen_size)
+screen.fill(BLUE)
+pygame.display.flip()
+
 
 max_fringe_size = 0
 
@@ -191,6 +196,7 @@ def bfsBD(start, goal):
                 path_front_to_intersection = back_track(backward_mapping, start, disc)
                 path_back_to_intersection = back_track(forward_mapping, goal, disc)
                 path_back_to_intersection.reverse()
+                path_back_to_intersection.remove(intersect[0])
                 return path_front_to_intersection + path_back_to_intersection
         if not fringe_back.empty():
             current_back = fringe_back.get()
@@ -205,6 +211,7 @@ def bfsBD(start, goal):
                 path_front_to_intersection = back_track(backward_mapping, start, disc)
                 path_back_to_intersection = back_track(forward_mapping, goal, disc)
                 path_back_to_intersection.reverse()
+                path_back_to_intersection.remove(intersect[0])
                 return path_front_to_intersection + path_back_to_intersection
     return None
 
@@ -248,6 +255,7 @@ def fire_strat_1(q, num_tests, display):
             break
 
         # print_maze(path)
+
         for cell in path:
             if cell.on_fire:
                 fail_counter += 1
@@ -255,12 +263,24 @@ def fire_strat_1(q, num_tests, display):
                 break
             compute_fire_movement(q)
             if display:
-                draw_maze([path[0]])
-            path = path[1:]
+                draw_maze([cell])
+            # path = path[1:]
             # print_maze(path)
         board = []
-    print()
-    return (fail_counter / num_tests) * 100
+        # while not (path == []):
+        #     cell = path[0]
+        #     if cell.on_fire:
+        #         fail_counter += 1
+        #         # print("FAILLLL")
+        #         break
+        #     compute_fire_movement(q)
+        #     if display:
+        #         draw_maze([path[0]])
+        #     path = path[1:]
+        #     # print_maze(path)
+        # board = []
+    print("\r", end="")
+    return 100 - ((fail_counter / num_tests) * 100)
 
 
 def fire_strat_2(q, num_tests):
@@ -271,6 +291,7 @@ def fire_strat_2(q, num_tests):
     path = None
     fail_counter = 0
     for i in range(num_tests):
+        print("\r Running Test " + str(i), end="")
         while True:
             create_maze(optimal_dim, optimal_p)
             start = board[0][0]
@@ -299,7 +320,8 @@ def fire_strat_2(q, num_tests):
             compute_fire_movement(q)
             draw_maze([path[0]])
             path = astar(path[1], goal, euclidean_dist)
-    return (fail_counter / num_tests) * 100
+    print("\r", end="")
+    return 100 - ((fail_counter / num_tests) * 100)
 
 
 # Multi Process version To go quicker but does not display the maze!!
@@ -309,6 +331,7 @@ def fire_strat_2_multi_proc(q, num_tests):
     processes = []
     # print("starting ", end="")
     for i in range(num_tests):
+        print("\r Running Test " + str(i), end="")
         processes.append(Process(target=fire_strat_2_helper, args=(q,)))
         processes[i].start()
         # print("\r" + str(i), end="")
@@ -320,7 +343,8 @@ def fire_strat_2_multi_proc(q, num_tests):
         if p.exitcode == 1:
             fail_counter += 1
     # print("Fail Counter: " + str(fail_counter))
-    return (fail_counter / num_tests) * 100
+    print("\r", end="")
+    return 100 - ((fail_counter / num_tests) * 100)
 
 
 def fire_strat_2_helper(q):
@@ -450,10 +474,12 @@ def draw_maze(path):
 
 if __name__ == '__main__':
 
-    create_maze(optimal_dim, 0)
-    screen.fill(BLUE)
-    pygame.draw.rect(screen, WHITE, (0, 0, 1, 1))
-    pygame.display.update()
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            running = False
 
     if input("\n\nWelcome to our Maze Runner! To run the algorithm we used to find our dim "
              "\npress the enter key press to continue or any other key followed by enter to continue\n") == "":
@@ -619,30 +645,50 @@ if __name__ == '__main__':
             "Euclidean Distance: " + str(total_time_ed / num_tests) + "\n"
             "Manhattan Distance: " + str(total_time_md / num_tests) + "\n")
 
+    q = 0.0
+    q_increment = 0.025
+    q_max = .5
 
     output = None
     try:
         num_tests = int(input("\n\nTo run fire Strategy 1 enter the number of times you want it to run "
                               "\nand press enter otherwise to continue hit any other key followed by enter \n"))
 
+
         if input("\nWould you like to display all the tests? (it runs significantly slower when displaying) "
                  "enter \"y\" for Yes and enter anything else for No") == "y":
-            output = fire_strat_1(optimal_q, num_tests, True)
+            while q <= q_max:
+                output = fire_strat_1(q, num_tests, True)
+                print(str(q) + "\t" + str(output))
+                q += q_increment
+                q = round(q, 3)
         else:
-            output = fire_strat_1(optimal_q, num_tests, False)
-        print("Fail Rate For Fire Strategy 1: " + str(output))
+            while q <= q_max:
+                output = fire_strat_1(q, num_tests, False)
+                print(str(q) + "\t" + str(output))
+                q += q_increment
+                q = round(q, 3)
     except ValueError:
         None
     try:
         num_tests = int(input("\n\nTo run fire Strategy 2 enter the number of times you want it to run "
                               "\nand press enter otherwise to continue hit any other key followed by enter \n"))
 
+        q = 0.0
+
         if input("\nWould you like to display all the tests? (it runs significantly slower when displaying) "
                  "enter \"y\" for Yes and enter anything else for No\n") == "y":
-            output = fire_strat_2(optimal_q, num_tests)
+            while q <= q_max:
+                output = fire_strat_2(q, num_tests)
+                print(str(q) + "\t" + str(output))
+                q += q_increment
+                q = round(q, 3)
         else:
-            output = fire_strat_2_multi_proc(optimal_q, num_tests)
-        print("Fail Rate For Fire Strategy 2: " + str(output))
+            while q <= q_max:
+                output = fire_strat_2_multi_proc(q, num_tests)
+                print(str(q) + "\t" + str(output))
+                q += q_increment
+                q = round(q, 3)
     except ValueError:
         None
 
