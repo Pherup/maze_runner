@@ -8,7 +8,8 @@ from queue import LifoQueue
 import time
 import sys
 from multiprocessing import Process
-from multiprocessing import Queue as msQueue
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 
 # TODO: Create Hard Maze
@@ -314,6 +315,7 @@ def fire_strat_2(q, num_tests):
             compute_fire_movement(q)
             draw_maze([path[0]])
             path = astar(path[1], goal, euclidean_dist)
+    return (fail_counter / num_tests) * 100
 
 
 # Multi Process version To go quicker but does not display the maze!!
@@ -622,20 +624,29 @@ if __name__ == '__main__':
             "Euclidean Distance: " + str(max_fringe_ed/num_tests) + "\n"
             "Manhattan Distance: " + str(max_fringe_md/num_tests))
 
+    output = None
     try:
         num_tests = int(input("\n\nTo run fire Strategy 1 enter the number of times you want it to run "
                               "\nand press enter otherwise to continue hit any other key followed by enter \n"))
+
         if input("\nWould you like to display all the tests? (it runs significantly slower when displaying) "
                  "enter \"y\" for Yes and enter anything else for No") == "y":
-            fire_strat_1(optimal_q, num_tests, True)
+            output = fire_strat_1(optimal_q, num_tests, True)
         else:
-            fire_strat_1(optimal_q, num_tests, True)
+            output = fire_strat_1(optimal_q, num_tests, False)
+        print("Fail Rate For Fire Strategy 1: " + str(output))
     except ValueError:
         None
     try:
         num_tests = int(input("\n\nTo run fire Strategy 2 enter the number of times you want it to run "
                               "\nand press enter otherwise to continue hit any other key followed by enter \n"))
-        fire_strat_2(optimal_q, num_tests)
+
+        if input("\nWould you like to display all the tests? (it runs significantly slower when displaying) "
+                 "enter \"y\" for Yes and enter anything else for No") == "y":
+            output = fire_strat_2(optimal_q, num_tests)
+        else:
+            output = fire_strat_2_multi_proc(optimal_q, num_tests)
+        print("Fail Rate For Fire Strategy 2: " + str(output))
     except ValueError:
         None
 
