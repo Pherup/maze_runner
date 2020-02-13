@@ -80,21 +80,6 @@ def assign_board_neighbors(dim):
                     board[row][col].add_neighbor(board[row][col + 1])
 
 
-# def dfs(start, goal):
-#     return dfs_helper(start, goal, [])
-#
-#
-# def dfs_helper(current, goal, p):
-#     p.append(current)
-#     if current == goal:
-#         #print("returned")
-#         return p
-#     for neighbor in current.neighbors:
-#         if neighbor not in p:
-#             #print("looking at neighbors")
-#             return dfs_helper(neighbor, goal, p)
-#     return None
-
 def dfs(start,goal):
     fringe = LifoQueue(-1)
     discovered = [start]
@@ -609,20 +594,31 @@ if __name__ == '__main__':
 
     if input("\n\nTo run our way of measuring which heuristic is better press enter,"
              "\notherwise press any other key followed by enter\n") == "":
-        num_tests = 50
+        num_tests = 1000
         max_fringe_ed = 0
         max_fringe_md = 0
+        total_time_ed = 0
+        total_time_md = 0
         for i in range(num_tests):
+            print("\rRunning Test: "+str(i), end = "")
             create_maze(optimal_dim,optimal_p)
+            t0 = time.process_time()
             astar(board[0][0], board[optimal_dim-1][optimal_dim-1],euclidean_dist)
+            total_time_ed += (time.process_time() - t0)
             max_fringe_ed += max_fringe_size
             max_fringe_size = 0
+            t0 = time.process_time()
             astar(board[0][0], board[optimal_dim - 1][optimal_dim - 1], manhattan_dist)
+            total_time_md += (time.process_time() - t0)
             max_fringe_md += max_fringe_size
             max_fringe_size = 0
-        print("average max fringe size\n"
+        print("\raverage max fringe size\n"
             "Euclidean Distance: " + str(max_fringe_ed/num_tests) + "\n"
-            "Manhattan Distance: " + str(max_fringe_md/num_tests))
+            "Manhattan Distance: " + str(max_fringe_md/num_tests) + "\n"
+            "\naverage time to complete\n"
+            "Euclidean Distance: " + str(total_time_ed / num_tests) + "\n"
+            "Manhattan Distance: " + str(total_time_md / num_tests) + "\n")
+
 
     output = None
     try:
