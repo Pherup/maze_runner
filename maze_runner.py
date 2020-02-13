@@ -41,7 +41,7 @@ screen_size = (optimal_dim * width + 10, optimal_dim * width +10 )
 screen = pygame.display.set_mode(screen_size)
 screen.fill(BLUE)
 
-max_fringe = 0
+max_fringe_size = 0
 
 
 def create_maze(dim, p):
@@ -138,6 +138,7 @@ def back_track(backward_mapping, start, current):
 
 
 def astar(start, goal, hFunc):
+    global max_fringe_size
     fringeq = PriorityQueue(-1)
     backward_mapping = dict()
 
@@ -169,6 +170,8 @@ def astar(start, goal, hFunc):
                         fringeq.queue.remove(node)
                         break
                 fringeq.put(PrioritizedItem(fscores[neighbor], neighbor))
+                if(fringeq.qsize() > max_fringe_size):
+                    max_fringe_size = fringeq.qsize()
     return None
 
 
@@ -672,6 +675,22 @@ if __name__ == '__main__':
     except ValueError:
         None
 
+    if input("\n\nTo run our way of measuring which heuristic is better press enter,"
+             "\notherwise press any other key followed by enter\n") == "":
+        num_tests = 50
+        max_fringe_ed = 0
+        max_fringe_md = 0
+        for i in range(num_tests):
+            create_maze(optimal_dim,optimal_p)
+            astar(board[0][0], board[optimal_dim-1][optimal_dim-1],euclidean_dist)
+            max_fringe_ed += max_fringe_size
+            max_fringe_size = 0
+            astar(board[0][0], board[optimal_dim - 1][optimal_dim - 1], manhattan_dist)
+            max_fringe_md += max_fringe_size
+            max_fringe_size = 0
+        print("average max fringe size\n"
+            "Euclidean Distance: " + str(max_fringe_ed/num_tests) + "\n"
+            "Manhattan Distance: " + str(max_fringe_md/num_tests))
 
     try:
         num_tests = int(input("\n\nTo run fire Strategy 1 enter the number of times you want it to run "
@@ -689,6 +708,9 @@ if __name__ == '__main__':
         fire_strat_2(optimal_q, num_tests)
     except ValueError:
         None
+
+
+
 
     # create_maze(optimal_dim, optimal_p)
     # running = True
