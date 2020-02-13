@@ -182,77 +182,6 @@ def euclidean_dist(x1, y1, x2, y2):
 def manhattan_dist(x1, y1, x2, y2):
     return abs(x1 - x2) + abs(y1 - y2)
 
-
-# def bfsBD(start,goal):
-#     fringSt = PriorityQueue()
-#     fringEn = PriorityQueue()
-#     gscoresSt = dict();
-#     gscoresEn = dict();
-#     gscoresSt[start] = 0
-#     gscoresEn[goal] = 0
-#     backward_mappingF = dict()
-#     backward_mappingB = dict()
-#     fringSt.put(PrioritizedItem(gscoresSt[start], start))
-#     fringEn.put(PrioritizedItem(gscoresEn[goal], goal))
-#     while not fringSt.empty() and not fringEn.empty():
-#         currentF = fringSt.get().item
-#         currentB = fringEn.get().item
-#         for neighbor in currentF.neighbors:
-#             try:
-#                 gscoresSt[neighbor]
-#             except KeyError:
-#                 gscoresSt[neighbor] = math.inf
-#             try:
-#                 gscoresEn[neighbor]
-#             except KeyError:
-#                 gscoresEn[neighbor] = math.inf
-#             recalc_g = gscoresSt[currentF] + 1
-#             if gscoresSt[neighbor] != math.inf and gscoresEn[neighbor] != math.inf:
-#                 path = [neighbor]
-#                 path.insert(0, currentF)
-#                 currentTemp = neighbor
-#
-#                 while currentF != start:
-#                     currentF = backward_mappingF[currentF]
-#                     path.insert(0, currentF)
-#                 while currentTemp != goal:
-#                     currentTemp = backward_mappingB[currentTemp]
-#                     path.insert(len(path), currentTemp)
-#                 return path
-#             if recalc_g < gscoresSt[neighbor]:
-#                 backward_mappingF[neighbor] = currentF
-#                 gscoresSt[neighbor] = recalc_g
-#
-#                 for node in fringSt.queue:
-#                     if node.item == neighbor:
-#                         fringSt.queue.remove(node)
-#                         break
-#                 fringSt.put(PrioritizedItem(gscoresSt[neighbor], neighbor))
-#         for neighbor in currentB.neighbors:
-#             try:
-#                 gscoresSt[neighbor]
-#             except KeyError:
-#                 gscoresSt[neighbor] = math.inf
-#             try:
-#                 gscoresEn[neighbor]
-#             except KeyError:
-#                 gscoresEn[neighbor] = math.inf
-#             recalc_g = gscoresEn[currentB] + 1
-#
-#             if recalc_g < gscoresEn[neighbor]:
-#                 backward_mappingB[neighbor] = currentB
-#                 gscoresEn[neighbor] = recalc_g
-#
-#                 for node in fringEn.queue:
-#                     if node.item == neighbor:
-#                         fringEn.queue.remove(node)
-#                         break
-#                 fringEn.put(PrioritizedItem(gscoresEn[neighbor], neighbor))
-#
-#
-#     return []
-
-
 def bfsBD(start, goal):
     fringe_front = Queue(-1)
     fringe_back = Queue(-1)
@@ -379,6 +308,7 @@ def fire_strat_2(q, num_tests):
         while True:
             if path is None or path[0].on_fire:
                 fail_counter += 1
+                break
             elif path[1] == goal:
                 break
             compute_fire_movement(q)
