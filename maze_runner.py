@@ -40,7 +40,6 @@ pygame.init()
 width = 8
 screen_size = (optimal_dim * width + 10, optimal_dim * width +10 )
 screen = pygame.display.set_mode(screen_size)
-screen.fill(BLUE)
 
 max_fringe_size = 0
 
@@ -466,9 +465,10 @@ def draw_maze(path):
 
 if __name__ == '__main__':
 
-    create_maze(3,0)
-    path = dfs(board[0][0],board[2][2])
-    print_maze(path)
+    create_maze(optimal_dim, 0)
+    screen.fill(BLUE)
+    pygame.draw.rect(screen, WHITE, (0, 0, 1, 1))
+    pygame.display.update()
 
     if input("\n\nWelcome to our Maze Runner! To run the algorithm we used to find our dim "
              "\npress the enter key press to continue or any other key followed by enter to continue\n") == "":
@@ -642,7 +642,7 @@ if __name__ == '__main__':
                               "\nand press enter otherwise to continue hit any other key followed by enter \n"))
 
         if input("\nWould you like to display all the tests? (it runs significantly slower when displaying) "
-                 "enter \"y\" for Yes and enter anything else for No") == "y":
+                 "enter \"y\" for Yes and enter anything else for No\n") == "y":
             output = fire_strat_2(optimal_q, num_tests)
         else:
             output = fire_strat_2_multi_proc(optimal_q, num_tests)
