@@ -1,3 +1,5 @@
+import copy
+
 from cell import Cell
 from queue import PriorityQueue
 from prioritizeditem import PrioritizedItem
@@ -35,6 +37,7 @@ fire_symbol = "\U0001F525"
 # fire_symbol = "#"
 optimal_dim = 60
 optimal_p = 0.225
+p0 = 0.3
 optimal_q = .1
 p0 = .3
 
@@ -47,6 +50,8 @@ screen = pygame.display.set_mode(screen_size)
 
 
 max_fringe_size = 0
+num_nodes_explored = 0
+nodes_explored = []
 fire_locations = []
 
 def create_maze(dim, p):
@@ -129,6 +134,8 @@ def back_track(backward_mapping, start, current):
 
 def astar(start, goal, hFunc):
     global max_fringe_size
+    global num_nodes_explored
+    global nodes_explored
     fringeq = PriorityQueue(-1)
     backward_mapping = dict()
 
@@ -140,6 +147,8 @@ def astar(start, goal, hFunc):
     fringeq.put(PrioritizedItem(fscores[start], start))
     while not fringeq.empty():
         current = fringeq.get().item
+        nodes_explored.append(current)
+        num_nodes_explored += 1
         if current == goal:
             return back_track(backward_mapping, start, current)
         for neighbor in current.neighbors:
@@ -173,6 +182,7 @@ def manhattan_dist(x1, y1, x2, y2):
     return abs(x1 - x2) + abs(y1 - y2)
 
 def bfsBD(start, goal):
+    global nodes_explored
     fringe_front = Queue(-1)
     fringe_back = Queue(-1)
     discovered_front = [start]
@@ -185,6 +195,7 @@ def bfsBD(start, goal):
     while not (fringe_front.empty() or fringe_back.empty()):
         if not fringe_front.empty():
             current_front = fringe_front.get()
+            nodes_explored.append(current_front)
             for neighbor in current_front.neighbors:
                 if neighbor not in discovered_front:
                     discovered_front.append(neighbor)
@@ -200,6 +211,7 @@ def bfsBD(start, goal):
                 return path_front_to_intersection + path_back_to_intersection
         if not fringe_back.empty():
             current_back = fringe_back.get()
+            nodes_explored.append(current_back)
             for neighbor in current_back.neighbors:
                 if neighbor not in discovered_back:
                     discovered_back.append(neighbor)
@@ -256,33 +268,15 @@ def fire_strat_1(q, num_tests, display):
         print("\r Running Test " + str(i), end="")
         path = create_fire_maze()
         goal = board[len(board) - 1][len(board) - 1]
-
-        # print_maze(path)
-
         for cell in path:
             if cell.on_fire:
                 fail_counter += 1
-                # print("FAILLLL")
                 break
             compute_fire_movement(q)
             if display:
                 draw_maze([cell])
                 pygame.event.get()
-            # path = path[1:]
-            # print_maze(path)
         board = []
-        # while not (path == []):
-        #     cell = path[0]
-        #     if cell.on_fire:
-        #         fail_counter += 1
-        #         # print("FAILLLL")
-        #         break
-        #     compute_fire_movement(q)
-        #     if display:
-        #         draw_maze([path[0]])
-        #     path = path[1:]
-        #     # print_maze(path)
-        # board = []
     print("\r", end="")
     return 100 - ((fail_counter / num_tests) * 100)
 
@@ -303,6 +297,8 @@ def fire_strat_2(q, num_tests):
             compute_fire_movement(q)
             draw_maze([path[0]])
             pygame.event.get()
+            if path[1].on_fire:
+                sys.exit(1)
             path = astar(path[1], goal, euclidean_dist)
     print("\r", end="")
     return 100 - ((fail_counter / num_tests) * 100)
@@ -342,6 +338,8 @@ def fire_strat_2_helper(q):
             sys.exit(0)
             # return
         compute_fire_movement(q)
+        if path[1].on_fire:
+            sys.exit(1)
         path = astar(path[1], goal, euclidean_dist)
 
 
@@ -407,54 +405,37 @@ def fire_strat_custom_multi_proc(q, num_tests,steps_ahead):
 
 
 def fire_strat_custom_helper(q, steps_ahead):
-    create_fire_maze()
-    path = fire_search(board[0][0], board[optimal_dim - 1][optimal_dim - 1])
+    path = create_fire_maze()
     goal = board[len(board) - 1][len(board) - 1]
     while True:
-        if path is None or path[0].on_fire:
+        if path is None or path[1].on_fire:
             sys.exit(1)
-        current = path[0]
-
-        # current = path[0]
-        # draw_maze([current])
-        # pygame.event.get()
-
-
-        if path[1] == goal:
+            # return
+        current = path[1]
+        if current == goal:
             sys.exit(0)
+            # return
+        # draw_maze(path)
+        # pygame.event.get()
         compute_fire_movement(q)
-        # if fire_distance(current) < 20:
-        if True:
-            fire_reset = []
-            step_length = []
-            for j in range(steps_ahead):
-                temp = compute_fire_movement(q)
-                step_length.append(len(temp))
-                fire_reset = fire_reset + temp
-
-            while True:
+        if fire_distance(current) < 2:
+            fire_steps = []
+            for i in range(steps_ahead):
+                fire_steps.append(compute_fire_movement(q))
+            path = astar(current, goal, euclidean_dist)
+            if path is None and len(fire_steps) != 0:
+                reset_fire_prediction(fire_steps[-1])
+                del fire_steps[-1]
                 path = astar(current, goal, euclidean_dist)
-                if path is not None:
-                    for cell in fire_reset:
-                        cell.on_fire = False
-                    break
-                if len(fire_reset) == 0:
-                    break
-                if path is None:
-                    for i in range(step_length[-1]):
-                        fire_reset[len(fire_reset) - 1].on_fire = False
-                        fire_locations.remove((fire_reset[len(fire_reset) - 1].row, fire_reset[len(fire_reset) - 1].col))
-                        fire_reset.pop(len(fire_reset) - 1)
-                    step_length.remove(step_length[-1])
-        if path is not None:
-            path = path[1:]
+        else:
+            path = astar(current, goal, euclidean_dist)
+
 
 def fire_search(start, goal):
-    distance_importance_factor = -2
     fringe = PriorityQueue(-1)
     discovered = [start]
     backward_mapping = dict()
-    score = distance_importance_factor * fire_distance(start) + euclidean_dist(start.row, start.col, goal.row, goal.col)
+    score = (10 * euclidean_dist(start.row, start.col, goal.row, goal.col)) #+ (fire_distance(start) * -.5)
     fringe.put(PrioritizedItem(score, start))
 
     if goal.on_fire:
@@ -469,17 +450,21 @@ def fire_search(start, goal):
             if neighbor not in discovered and not neighbor.on_fire:
                 discovered.append(neighbor)
                 backward_mapping[neighbor] = current
-                score = (distance_importance_factor * fire_distance(neighbor)) + euclidean_dist(neighbor.row, neighbor.col, goal.row, goal.col)
+                score = (10 * euclidean_dist(start.row, start.col, goal.row, goal.col)) #+ (fire_distance(start) * -.5)
                 fringe.put(PrioritizedItem(score, neighbor))
     return None
 
 def fire_distance(start):
     global fire_locations
-    m = euclidean_dist(start.row, start.col, fire_locations[0][0], fire_locations[0][1])
+    m = manhattan_dist(start.row, start.col, fire_locations[0][0], fire_locations[0][1])
     for locs in fire_locations:
-        if euclidean_dist(start.row, start.col, locs[0], locs[1]) > m:
-            m = euclidean_dist(start.row, start.col, locs[0], locs[1])
+        if manhattan_dist(start.row, start.col, locs[0], locs[1]) < m:
+            m = manhattan_dist(start.row, start.col, locs[0], locs[1])
     return m
+
+def reset_fire_prediction(step):
+    for cell in step:
+        cell.on_fire = False
 
 def compute_fire_movement(q):
     new_on_fire = []
@@ -722,29 +707,142 @@ if __name__ == '__main__':
         max_fringe_md = 0
         total_time_ed = 0
         total_time_md = 0
-        for i in range(num_tests):
-            print("\rRunning Test: "+str(i), end = "")
-            create_maze(optimal_dim,optimal_p)
-            t0 = time.process_time()
-            astar(board[0][0], board[optimal_dim-1][optimal_dim-1],euclidean_dist)
-            total_time_ed += (time.process_time() - t0)
-            max_fringe_ed += max_fringe_size
-            max_fringe_size = 0
-            t0 = time.process_time()
-            astar(board[0][0], board[optimal_dim - 1][optimal_dim - 1], manhattan_dist)
-            total_time_md += (time.process_time() - t0)
-            max_fringe_md += max_fringe_size
-            max_fringe_size = 0
-        print("\raverage max fringe size\n"
-            "Euclidean Distance: " + str(max_fringe_ed/num_tests) + "\n"
-            "Manhattan Distance: " + str(max_fringe_md/num_tests) + "\n"
-            "\naverage time to complete\n"
-            "Euclidean Distance: " + str(total_time_ed / num_tests) + "\n"
-            "Manhattan Distance: " + str(total_time_md / num_tests) + "\n")
+        total_nodes_ed = 0
+        total_nodes_md = 0
+        average_max_fringe_ed = []
+        average_time_ed = []
+        average_total_nodes_ed = []
+        average_max_fringe_md = []
+        average_time_md = []
+        average_total_nodes_md = []
 
+        dim = 25
+        while dim <= 100:
+            for i in range(num_tests):
+                print("\rRunning Test: "+str(i), end = "")
+                create_maze(dim, optimal_p)
+
+                t0 = time.process_time()
+                astar(board[0][0], board[dim-1][dim-1],euclidean_dist)
+                total_time_ed += (time.process_time() - t0)
+
+                max_fringe_ed += max_fringe_size
+                total_nodes_ed += num_nodes_explored
+
+                max_fringe_size = 0
+                num_nodes_explored = 0
+
+                t0 = time.process_time()
+                astar(board[0][0], board[dim - 1][dim - 1], manhattan_dist)
+                total_time_md += (time.process_time() - t0)
+
+                max_fringe_md += max_fringe_size
+                total_nodes_md += num_nodes_explored
+
+                max_fringe_size = 0
+                num_nodes_explored = 0
+
+            average_max_fringe_ed.append((dim,max_fringe_ed/num_tests))
+            average_time_ed.append((dim,total_time_ed/num_tests))
+            average_total_nodes_ed.append((dim,total_nodes_ed/num_tests))
+
+            average_max_fringe_md.append((dim,max_fringe_md/num_tests))
+            average_time_md.append((dim,total_time_md/num_tests))
+            average_total_nodes_md.append((dim,total_nodes_md/num_tests))
+
+
+            print("\rAverages for Dim: " + str(dim) +
+                "\naverage max fringe size\n"
+                "Euclidean Distance: " + str(max_fringe_ed/num_tests) + "\n"
+                "Manhattan Distance: " + str(max_fringe_md/num_tests) + "\n"
+                "\naverage time to complete\n"
+                "Euclidean Distance: " + str(total_time_ed /num_tests) + "\n"
+                "Manhattan Distance: " + str(total_time_md /num_tests) + "\n"
+                "\naverage nodes visited\n"
+                "Euclidean Distance: " + str(total_nodes_ed /num_tests) + "\n"
+                "Manhattan Distance: " + str(total_nodes_md /num_tests) + "\n")
+            dim += 25
+
+        print("average max fringe for ED Data")
+        for i in average_max_fringe_ed:
+            print(str(i[0]) + "\t" + str(i[1]))
+
+        print("average max fringe for MD Data")
+        for i in average_max_fringe_md:
+            print(str(i[0]) + "\t" + str(i[1]))
+
+        print("average time for ED Data")
+        for i in average_time_ed:
+            print(str(i[0]) + "\t" + str(i[1]))
+
+        print("average time for MD Data")
+        for i in average_time_md:
+            print(str(i[0]) + "\t" + str(i[1]))
+
+        print("average nodes explored for ED Data")
+        for i in average_total_nodes_ed:
+            print(str(i[0]) + "\t" + str(i[1]))
+
+        print("average nodes explored for MD Data")
+        for i in average_total_nodes_md:
+            print(str(i[0]) + "\t" + str(i[1]))
 
     screen.fill(BLUE)
     pygame.display.flip()
+
+    if input("\n\nTo run our testing on if on the same map there are some nodes that BDBFS expands that A* does not"
+             "Press enter, otherwise press any other key followed by enter\n") == "":
+        num_tests = 100
+        for i in range(num_tests):
+            create_maze(optimal_dim,optimal_p)
+            start = board[0][0]
+            goal = board[optimal_dim-1][optimal_dim-1]
+
+            astar_nodes_md = []
+            bfsbd_nodes = []
+
+            astar(start, goal, manhattan_dist)
+            astar_nodes_md = copy.copy(nodes_explored)
+            nodes_explored = []
+
+            bfsBD(start, goal)
+            bfsbd_nodes = copy.copy(nodes_explored)
+            nodes_explored = []
+
+            diff_bfs_MD = list(set(bfsbd_nodes) - set(astar_nodes_md))
+            diff_MD_bfs = list(set(astar_nodes_md) - set(bfsbd_nodes))
+
+            if len(diff_bfs_MD) != 0 or len(diff_MD_bfs) != 0:
+                pygame.display.set_caption('astar nodes explored (MD)')
+                running = True
+                while running:
+                    draw_maze(astar_nodes_md)
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT:
+                            running = False
+                pygame.display.set_caption('bfsbd nodes explored')
+                running = True
+                while running:
+                    draw_maze(bfsbd_nodes)
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT:
+                            running = False
+                pygame.display.set_caption('Difference in nodes explored BFS - MD')
+                running = True
+                while running:
+                    draw_maze(diff_bfs_MD)
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT:
+                            running = False
+                pygame.display.set_caption('Difference in nodes explored MD - BFS')
+                running = True
+                while running:
+                    draw_maze(diff_MD_bfs)
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT:
+                            running = False
+                break
+
 
     q = 0.0
     q_increment = 0.025
@@ -809,13 +907,13 @@ if __name__ == '__main__':
         if input("\nWould you like to display all the tests? (it runs significantly slower when displaying) "
                  "enter \"y\" for Yes and enter anything else for No\n") == "y":
             while q <= q_max:
-                output = fire_strat_custom(q, num_tests, 7)
+                output = fire_strat_custom(q, num_tests, 4)
                 print(str(q) + "\t" + str(output))
                 q += q_increment
                 q = round(q, 3)
         else:
             while q <= q_max:
-                output = fire_strat_custom_multi_proc(q, num_tests, 7)
+                output = fire_strat_custom_multi_proc(q, num_tests, 4)
                 print(str(q) + "\t" + str(output))
                 q += q_increment
                 q = round(q, 3)
@@ -823,32 +921,17 @@ if __name__ == '__main__':
         None
 
 
-    num_tests = 1000
-    while q <= q_max:
-        output = fire_strat_1(q, num_tests, False)
-        print(str(q) + "\t" + str(output))
-        q += q_increment
-        q = round(q, 3)
+    num_tests = int(input("enter num tests"))
 
-    q = 0.0
-    while q <= q_max:
+    while q <= .325:
         output = fire_strat_2_multi_proc(q, num_tests)
         print(str(q) + "\t" + str(output))
         q += q_increment
         q = round(q, 3)
 
-    q = 0.0
-    while q <= q_max:
-        output = fire_strat_custom_multi_proc(q, num_tests, 7)
+    q = 0.00
+    while q <= .325:
+        output = fire_strat_custom_multi_proc(q, num_tests, 3)
         print(str(q) + "\t" + str(output))
         q += q_increment
         q = round(q, 3)
-    # create_maze(optimal_dim, optimal_p)
-    # running = True
-    # path = bfsBD(board[0][0], board[104][104])
-    # print_maze(path)
-    # while running:
-    #     for event in pygame.event.get():
-    #         if event.type == pygame.QUIT:
-    #             running = False
-    #     draw_maze(path)
