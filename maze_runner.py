@@ -14,10 +14,6 @@ import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 
-# TODO: Create Hard Maze
-# TODO: Fire Maze Own Strategy
-# TODO: Plot Data for heuristics
-# TODO: improved DFS
 
 # Colors
 WHITE = (255, 255, 255)
@@ -45,8 +41,8 @@ pygame.init()
 width = 8
 screen_size = (optimal_dim * width + 10, optimal_dim * width +10 )
 screen = pygame.display.set_mode(screen_size)
-# screen.fill(BLUE)
-# pygame.display.flip()
+screen.fill(BLUE)
+pygame.display.flip()
 
 
 max_fringe_size = 0
@@ -54,6 +50,9 @@ num_nodes_explored = 0
 nodes_explored = []
 fire_locations = []
 
+
+#Function to create the maze, takes Dim and P value and sets the global board variable to be the maze
+#it also creates a graph by assigning the unblocked neighbors for each cell in the board.
 def create_maze(dim, p):
     global board
     board = []
@@ -68,129 +67,76 @@ def create_maze(dim, p):
                     board[row][col].set_block_status(True)
     assign_board_neighbors(dim)
 
+# Our BFS implementation
+def bfs(start, goal):
+    #We used a queue as our fringe
+    fringe = Queue(-1)
 
-def create_hard_maze_dfs_max_fringe(dim, p):
-    global max_fringe_size
-    create_maze(dim, p)
-    max_path = dfs(board[0][0], board[dim-1][dim-1])
-    while len(max_path) < 1:
-        create_maze(dim, p)
-        max_path = dfs(board[0][0], board[dim-1][dim-1])
-    t = 1
-    no_change = 0
-    hard_fringe_size = max_fringe_size
-    print(hard_fringe_size)
-    print_maze_nopath()
-    print_maze(max_path)
-    while no_change < 2*dim**2:
-        temperature = 1/t
-        row_rand = random.randrange(0,dim)
-        col_rand = random.randrange(0,dim)
-        if not((row_rand == dim-1) and (col_rand == dim-1)) and not((row_rand == 0) and (col_rand == 0)):
-
-            if board[row_rand][col_rand].is_blocked:
-                board[row_rand][col_rand].set_block_status(False)
-            else:
-                board[row_rand][col_rand].set_block_status(True)
-            assign_board_neighbors(dim)
-            temp_path = dfs(board[0][0],board[dim - 1][dim - 1])
-            temp_fringe_size = max_fringe_size
-            P = math.exp(-0.1*(hard_fringe_size-temp_fringe_size)/temperature)
-            if (temp_fringe_size > hard_fringe_size) or (temp_fringe_size < hard_fringe_size and random.random() < P):
-                hard_fringe_size = temp_fringe_size
-                max_path = temp_path
-                t += 1
-                no_change = 0
-                print(hard_fringe_size)
-            else:
-                no_change += 1
-                if board[row_rand][col_rand].is_blocked:
-                    board[row_rand][col_rand].set_block_status(False)
-                else:
-                    board[row_rand][col_rand].set_block_status(True)
-
-
-    print_maze_nopath()
-    print_maze(max_path)
-    print(hard_fringe_size)
-    return None
-
-def create_hard_maze_manhattan_max_nodes(dim, p):
-    global board
-    create_maze(dim, p)
-    (max_path) = astar(board[0][0], board[dim-1][dim-1], manhattan_dist)
-    while len(max_path) < 1:
-        create_maze(dim, p)
-        (max_path) = astar(board[0][0], board[dim-1][dim-1], manhattan_dist)
-    t = 1
-    no_change = 0
-    hard_node_size = num_nodes_explored
-    print(hard_node_size)
-    print_maze_nopath()
-    print_maze(max_path)
-    while no_change < dim**2:
-        temperature= 1/t
-        row_rand = random.randrange(0,dim)
-        col_rand = random.randrange(0,dim)
-        if not((row_rand == dim-1) and (col_rand == dim-1)) and not((row_rand == 0) and (col_rand == 0)):
-            if board[row_rand][col_rand].is_blocked:
-                board[row_rand][col_rand].set_block_status(False)
-            else:
-                board[row_rand][col_rand].set_block_status(True)
-            assign_board_neighbors(dim)
-            temp_path = astar(board[0][0], board[dim-1][dim-1], manhattan_dist)
-            P = math.exp(-0.1*(hard_node_size-num_nodes_explored)/temperature)
-            if (num_nodes_explored > hard_node_size) or (num_nodes_explored < hard_node_size and random.random() < P):
-                hard_node_size = num_nodes_explored
-                max_path = temp_path
-                t += 1
-                no_change = 0
-            else:
-                no_change += 1
-                if board[row_rand][col_rand].is_blocked:
-                    board[row_rand][col_rand].set_block_status(False)
-                else:
-                    board[row_rand][col_rand].set_block_status(True)
-
-    print_maze_nopath()
-    print_maze(max_path)
-    print(hard_node_size)
-    return None
-
-
-def assign_board_neighbors(dim):
-    for row in range(dim):
-        for col in range(dim):
-            if row != 0:
-                if not board[row - 1][col].is_blocked:
-                    board[row][col].add_neighbor(board[row - 1][col])
-            if row != (dim - 1):
-                if not board[row + 1][col].is_blocked:
-                    board[row][col].add_neighbor(board[row + 1][col])
-            if col != 0:
-                if not board[row][col - 1].is_blocked:
-                    board[row][col].add_neighbor(board[row][col - 1])
-            if col != (dim - 1):
-                if not board[row][col + 1].is_blocked:
-                    board[row][col].add_neighbor(board[row][col + 1])
-
-
-def dfs(start,goal):
-    global max_fringe_size
-    fringe = LifoQueue(-1)
+    #We created a list of nodes to keep track of nodes we have seen already
     discovered = [start]
+
+    #we used a dictionary to keep track of which neighbor came from which cell (parent and child)
+    backward_mapping = dict()
+
+
+    fringe.put(start)
+
+    #while the fringe was not empty we looped though each cell from the fringe.
+    while not fringe.empty():
+
+        #get the top cell in the fringe
+        current = fringe.get()
+
+        #checks if the current node is the goal
+        if current == goal:
+            # uses backtrack helper function to take the backward mapping of the child and parent to return a
+            # list as the path
+            return back_track(backward_mapping, start, current)
+
+        #for all the neighbors for the current node it will add them to discovered, backward mapping, and fringe if
+        #the node is not already discovered
+        for neighbor in current.neighbors:
+            if neighbor not in discovered:
+                discovered.append(neighbor)
+                backward_mapping[neighbor] = current
+                fringe.put(neighbor)
+
+# Our DFS implementation (Same as BFS only with the queue changed to a stack
+def dfs(start, goal):
+    global max_fringe_size
+
+    # We used a queue as our fringe
+    fringe = LifoQueue(-1)
+
+    # We created a list of nodes to keep track of nodes we have seen already
+    discovered = [start]
+
+    # we used a dictionary to keep track of which neighbor came from which cell (parent and child)
     backward_mapping = dict()
     fringe.put(start)
-    fringe_size = 1;
-    max_fringe_size = 0;
-    
+
+    # we kept track of data such as this with global variables
+    fringe_size = 1
+    max_fringe_size = 0
+
     while not fringe.empty():
+
+        # updating max fringe size
         if max_fringe_size < fringe_size:
             max_fringe_size = fringe_size
+
+        # getting the top of the stack
         current = fringe.get()
         fringe_size -= 1
+
+        # checks if the current node is the goal
         if current == goal:
+            # uses backtrack helper function to take the backward mapping of the child and parent to return a
+            # list as the path
             return back_track(backward_mapping, start, current)
+
+        #for all the neighbors for the current node it will add them to discovered, backward mapping, and fringe if
+        #the node is not already discovered
         for neighbor in current.neighbors:
             if neighbor not in discovered:
                 discovered.append(neighbor)
@@ -198,30 +144,6 @@ def dfs(start,goal):
                 fringe.put(neighbor)
                 fringe_size += 1
     return []
-
-def bfs(start, goal):
-    fringe = Queue(-1)
-    discovered = [start]
-    backward_mapping = dict()
-    fringe.put(start)
-
-    while not fringe.empty():
-        current = fringe.get()
-        if current == goal:
-            return back_track(backward_mapping, start, current)
-        for neighbor in current.neighbors:
-            if neighbor not in discovered:
-                discovered.append(neighbor)
-                backward_mapping[neighbor] = current
-                fringe.put(neighbor)
-
-
-def back_track(backward_mapping, start, current):
-    path = [current]
-    while current != start:
-        current = backward_mapping[current]
-        path.insert(0, current)
-    return path
 
 
 def astar(start, goal, hFunc):
@@ -264,17 +186,10 @@ def astar(start, goal, hFunc):
                         fringeq.queue.remove(node)
                         break
                 fringeq.put(PrioritizedItem(fscores[neighbor], neighbor))
-                if(fringeq.qsize() > max_fringe_size):
+                if (fringeq.qsize() > max_fringe_size):
                     max_fringe_size = fringeq.qsize()
     return []
 
-
-def euclidean_dist(x1, y1, x2, y2):
-    return math.sqrt(((x1 - x2) ** 2) + ((y1 - y2) ** 2))
-
-
-def manhattan_dist(x1, y1, x2, y2):
-    return abs(x1 - x2) + abs(y1 - y2)
 
 def bfsBD(start, goal):
     global nodes_explored
@@ -322,13 +237,100 @@ def bfsBD(start, goal):
                 return path_front_to_intersection + path_back_to_intersection
     return None
 
+def euclidean_dist(x1, y1, x2, y2):
+    return math.sqrt(((x1 - x2) ** 2) + ((y1 - y2) ** 2))
 
-def intersection(list1, list2):
-    list2_as_set = set(list2)
-    intersect = [value for value in list1 if value in list2_as_set]
-    if len(intersect) == 0:
-        return None
-    return intersect
+
+def manhattan_dist(x1, y1, x2, y2):
+    return abs(x1 - x2) + abs(y1 - y2)
+
+# Function for creating a hard maze. This algorithm uses simulated annealing and measures the hardness using
+# the max size of the fringe while running DFS
+def create_hard_maze_dfs_max_fringe(dim, p):
+    global max_fringe_size
+    create_maze(dim, p)
+    max_path = dfs(board[0][0], board[dim-1][dim-1])
+    while len(max_path) < 1:
+        create_maze(dim, p)
+        max_path = dfs(board[0][0], board[dim-1][dim-1])
+    t = 1
+    no_change = 0
+    hard_fringe_size = max_fringe_size
+    print()
+    while no_change < 2*dim**2:
+        print("\rMax Fringe Size: " + str(hard_fringe_size) + " With " + str(no_change) +
+              " steps since no changes have been made", end="")
+        temperature = 1/t
+        row_rand = random.randrange(0,dim)
+        col_rand = random.randrange(0,dim)
+        if not((row_rand == dim-1) and (col_rand == dim-1)) and not((row_rand == 0) and (col_rand == 0)):
+
+            if board[row_rand][col_rand].is_blocked:
+                board[row_rand][col_rand].set_block_status(False)
+            else:
+                board[row_rand][col_rand].set_block_status(True)
+            assign_board_neighbors(dim)
+            temp_path = dfs(board[0][0],board[dim - 1][dim - 1])
+            temp_fringe_size = max_fringe_size
+            P = math.exp(-0.1*(hard_fringe_size-temp_fringe_size)/temperature)
+            if (temp_fringe_size > hard_fringe_size) or (temp_fringe_size < hard_fringe_size and random.random() < P):
+                hard_fringe_size = temp_fringe_size
+                max_path = temp_path
+                t += 1
+                no_change = 0
+            else:
+                no_change += 1
+                if board[row_rand][col_rand].is_blocked:
+                    board[row_rand][col_rand].set_block_status(False)
+                else:
+                    board[row_rand][col_rand].set_block_status(True)
+
+    print()
+    return None
+
+# Function for creating a hard maze. This algorithm uses simulated annealing and measures the hardness using
+# the max nodes explored by A star using manhattan distance as the heursitc
+def create_hard_maze_manhattan_max_nodes(dim, p):
+    global board
+    create_maze(dim, p)
+    (max_path) = astar(board[0][0], board[dim-1][dim-1], manhattan_dist)
+    while len(max_path) < 1:
+        create_maze(dim, p)
+        (max_path) = astar(board[0][0], board[dim-1][dim-1], manhattan_dist)
+    t = 1
+    no_change = 0
+    hard_node_size = num_nodes_explored
+    print(hard_node_size)
+    print_maze_nopath()
+    print_maze(max_path)
+    while no_change < dim**2:
+        temperature= 1/t
+        row_rand = random.randrange(0,dim)
+        col_rand = random.randrange(0,dim)
+        if not((row_rand == dim-1) and (col_rand == dim-1)) and not((row_rand == 0) and (col_rand == 0)):
+            if board[row_rand][col_rand].is_blocked:
+                board[row_rand][col_rand].set_block_status(False)
+            else:
+                board[row_rand][col_rand].set_block_status(True)
+            assign_board_neighbors(dim)
+            temp_path = astar(board[0][0], board[dim-1][dim-1], manhattan_dist)
+            P = math.exp(-0.1*(hard_node_size-num_nodes_explored)/temperature)
+            if (num_nodes_explored > hard_node_size) or (num_nodes_explored < hard_node_size and random.random() < P):
+                hard_node_size = num_nodes_explored
+                max_path = temp_path
+                t += 1
+                no_change = 0
+            else:
+                no_change += 1
+                if board[row_rand][col_rand].is_blocked:
+                    board[row_rand][col_rand].set_block_status(False)
+                else:
+                    board[row_rand][col_rand].set_block_status(True)
+
+    print_maze_nopath()
+    print_maze(max_path)
+    print(hard_node_size)
+    return None
 
 def create_fire_maze():
     global fire_locations
@@ -399,44 +401,6 @@ def fire_strat_2(q, num_tests):
     return 100 - ((fail_counter / num_tests) * 100)
 
 
-# Multi Process version To go quicker but does not display the maze!!
-def fire_strat_2_multi_proc(q, num_tests):
-    fail_counter = 0
-
-    processes = []
-    # print("starting ", end="")
-    for i in range(num_tests):
-        print("\r Running Test " + str(i), end="")
-        processes.append(Process(target=fire_strat_2_helper, args=(q,)))
-        processes[i].start()
-        # print("\r" + str(i), end="")
-    # print("\nJoining ", end="")
-    for p in processes:
-        p.join()
-        # print("#", end="")
-        # print(p.exitcode)
-        if p.exitcode == 1:
-            fail_counter += 1
-    # print("Fail Counter: " + str(fail_counter))
-    print("\r", end="")
-    return 100 - ((fail_counter / num_tests) * 100)
-
-
-def fire_strat_2_helper(q):
-    path = create_fire_maze()
-    goal = board[len(board) - 1][len(board) - 1]
-    while True:
-        if path is None or path[1].on_fire:
-            sys.exit(1)
-            # return
-        if path[1] == goal:
-            sys.exit(0)
-            # return
-        compute_fire_movement(q)
-        if path[1].on_fire:
-            sys.exit(1)
-        path = astar(path[1], goal, euclidean_dist)
-
 
 def fire_strat_custom(q, num_tests, steps_ahead):
     pygame.display.set_caption('Fire Strategy Custom')
@@ -468,175 +432,6 @@ def fire_strat_custom(q, num_tests, steps_ahead):
     print("\r", end="")
     return 100 - ((fail_counter / num_tests) * 100)
 
-# Multi Process version To go quicker but does not display the maze!!
-def fire_strat_custom_multi_proc(q, num_tests,steps_ahead):
-    fail_counter = 0
-
-    processes = []
-    for i in range(num_tests):
-        processes.append(Process(target=fire_strat_custom_helper, args=(q,steps_ahead)))
-        processes[i].start()
-    for p in processes:
-        p.join()
-        if p.exitcode == 1:
-            fail_counter += 1
-    return 100 - ((fail_counter / num_tests) * 100)
-
-
-def fire_strat_custom_helper(q, steps_ahead):
-    path = create_fire_maze()
-    goal = board[len(board) - 1][len(board) - 1]
-    while True:
-        if path is None or path[1].on_fire:
-            sys.exit(1)
-            # return
-        current = path[1]
-        if current == goal:
-            sys.exit(0)
-            # return
-        # draw_maze(path)
-        # pygame.event.get()
-        compute_fire_movement(q)
-        if fire_distance(current) < 2:
-            fire_steps = []
-            for i in range(steps_ahead):
-                fire_steps.append(compute_fire_movement(q))
-            path = astar(current, goal, euclidean_dist)
-            if path is None and len(fire_steps) != 0:
-                reset_fire_prediction(fire_steps[-1])
-                del fire_steps[-1]
-                path = astar(current, goal, euclidean_dist)
-        else:
-            path = astar(current, goal, euclidean_dist)
-
-
-def fire_search(start, goal):
-    fringe = PriorityQueue(-1)
-    discovered = [start]
-    backward_mapping = dict()
-    score = (10 * euclidean_dist(start.row, start.col, goal.row, goal.col)) #+ (fire_distance(start) * -.5)
-    fringe.put(PrioritizedItem(score, start))
-
-    if goal.on_fire:
-        return None
-    if astar(start, goal, euclidean_dist) is None:
-        return None
-    while not fringe.empty():
-        current = fringe.get().item
-        if current == goal:
-            return back_track(backward_mapping, start, current)
-        for neighbor in current.neighbors:
-            if neighbor not in discovered and not neighbor.on_fire:
-                discovered.append(neighbor)
-                backward_mapping[neighbor] = current
-                score = (10 * euclidean_dist(start.row, start.col, goal.row, goal.col)) #+ (fire_distance(start) * -.5)
-                fringe.put(PrioritizedItem(score, neighbor))
-    return None
-
-def fire_distance(start):
-    global fire_locations
-    m = manhattan_dist(start.row, start.col, fire_locations[0][0], fire_locations[0][1])
-    for locs in fire_locations:
-        if manhattan_dist(start.row, start.col, locs[0], locs[1]) < m:
-            m = manhattan_dist(start.row, start.col, locs[0], locs[1])
-    return m
-
-def reset_fire_prediction(step):
-    for cell in step:
-        cell.on_fire = False
-
-def compute_fire_movement(q):
-    new_on_fire = []
-    for row in board:
-        for cell in row:
-            if cell.on_fire:
-                continue
-            on_fire_count = 0
-            for neighbor in cell.neighbors:
-                if neighbor.on_fire:
-                    on_fire_count += 1
-            if on_fire_count >= 1:
-                p = 1 - ((1 - q) ** on_fire_count)
-                if random.random() < p:
-                    cell.set_fire_status(True)
-                    fire_locations.append((cell.row, cell.col))
-                    # fire_locations.sort(key=lambda x: x[0])
-                    new_on_fire.append(cell)
-    return new_on_fire
-
-def print_maze(path):
-    print("  \t", end='')
-    for i in range(len(board)):
-        print("\t" + str(i) + "\t", end='')
-    print()
-    for row in range(len(board)):
-        print("    ", end='')
-        for i in range(len(board)):
-            print("________", end='')
-        print()
-        for col in range(len(board[0]) + 1):
-            if col == 0:
-                print(str(row) + ":\t|", end='')
-            else:
-                print("|", end='')
-            if col < len(board[0]) and board[row][col] in path:
-                print("\t" + movement_symbol + "\t", end='')
-            else:
-                if col < len(board[0]) and board[row][col].is_blocked:
-                    print("\t" + block_symbol + "\t", end='')
-                elif col < len(board[0]) and board[row][col].on_fire:
-                    print("\t" + fire_symbol + "\t", end='')
-                else:
-                    print("\t \t", end='')
-        print()
-    print("    ", end='')
-    for i in range(len(board)):
-        print("________", end='')
-    print()
-
-
-def print_maze_nopath():
-    print("  \t", end='')
-    for i in range(len(board)):
-        print("\t" + str(i) + "\t", end='')
-    print()
-    for row in range(len(board)):
-        print("    ", end='')
-        for i in range(len(board)):
-            print("________", end='')
-        print()
-        for col in range(len(board[0]) + 1):
-            if col == 0:
-                print(str(row) + ":\t|", end='')
-            else:
-                print("|", end='')
-            if col < len(board[0]) and board[row][col].is_blocked:
-                print("\t" + block_symbol + "\t", end='')
-            elif col < len(board[0]) and board[row][col].on_fire:
-                print("\t" + fire_symbol + "\t", end='')
-            else:
-                print("\t \t", end='')
-        print()
-    print("    ", end='')
-    for i in range(len(board)):
-        print("________", end='')
-    print()
-
-
-def draw_maze(path):
-    if path is None:
-        return
-    for row in board:
-        for c in row:
-            if c.is_blocked:
-                pygame.draw.rect(screen, BLACK, (c.row * width, c.col * width, width, width))
-            elif c.on_fire:
-                pygame.draw.rect(screen, RED, (c.row * width, c.col * width, width, width))
-            elif c in path:
-                pygame.draw.rect(screen, GREEN, (c.row * width, c.col * width, width, width))
-            else:
-                pygame.draw.rect(screen, WHITE, (c.row * width, c.col * width, width, width))
-    pygame.display.update()
 
 if __name__ == '__main__':
 
@@ -922,6 +717,54 @@ if __name__ == '__main__':
                             running = False
                 break
 
+    if input("\n\nTo run our testing on how p0 depends on dim Press Enter\n") == "":
+        for dim in [20, 60, 125]:
+            if not dim % 5 == 0:
+                continue
+
+            print("\n\n\nDim :" + str(dim))
+            p = 0
+            while p <= .5:
+                fail_counter = 0
+                tests = 300
+                total_time = 0
+                for i in range(tests):
+                    create_maze(dim, p)
+                    if len(astar(board[0][0], board[dim - 1][dim - 1], manhattan_dist)) == 0:
+                        fail_counter += 1
+
+                    percent = 100 - ((fail_counter / tests) * 100)
+                    print(str(p) + "\t" + str(percent))
+                    p += .025
+                    round(p, 3)
+            print("\n\n\n\n\n")
+            # print(results)
+
+    try:
+        choice = int(input("To run our algorithm to generate a hard maze using simulated annealing and measuring hardness through "
+             "DFS max fringe size enter '1' to run measuring hardness through A* manhattan nodes explored enter '2' to see both enter '0'\n"))
+
+        dim = int(input("Enter Dimension: "))
+        if choice == 1 or choice == 0:
+            pygame.display.set_caption('Hard Maze DFS max Fringe Size')
+            create_hard_maze_dfs_max_fringe(dim, optimal_p)
+            running = True
+            while running:
+                draw_maze([])
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        running = False
+
+        if choice == 2 or choice == 0:
+            create_hard_maze_manhattan_max_nodes(dim, optimal_p)
+            running = True
+            while running:
+                draw_maze([])
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        running = False
+    except ValueError:
+        None
 
     q = 0.0
     q_increment = 0.025
@@ -998,3 +841,249 @@ if __name__ == '__main__':
                 q = round(q, 3)
     except ValueError:
         None
+
+
+#helper function for maze creation to initialize the graph of the maze
+def assign_board_neighbors(dim):
+    for row in range(dim):
+        for col in range(dim):
+            if row != 0:
+                if not board[row - 1][col].is_blocked:
+                    board[row][col].add_neighbor(board[row - 1][col])
+            if row != (dim - 1):
+                if not board[row + 1][col].is_blocked:
+                    board[row][col].add_neighbor(board[row + 1][col])
+            if col != 0:
+                if not board[row][col - 1].is_blocked:
+                    board[row][col].add_neighbor(board[row][col - 1])
+            if col != (dim - 1):
+                if not board[row][col + 1].is_blocked:
+                    board[row][col].add_neighbor(board[row][col + 1])
+
+
+
+
+# Multi Process version To go quicker but does not display the maze!!
+def fire_strat_2_multi_proc(q, num_tests):
+    fail_counter = 0
+
+    processes = []
+    # print("starting ", end="")
+    for i in range(num_tests):
+        print("\r Running Test " + str(i), end="")
+        processes.append(Process(target=fire_strat_2_helper, args=(q,)))
+        processes[i].start()
+        # print("\r" + str(i), end="")
+    # print("\nJoining ", end="")
+    for p in processes:
+        p.join()
+        # print("#", end="")
+        # print(p.exitcode)
+        if p.exitcode == 1:
+            fail_counter += 1
+    # print("Fail Counter: " + str(fail_counter))
+    print("\r", end="")
+    return 100 - ((fail_counter / num_tests) * 100)
+
+
+def fire_strat_2_helper(q):
+    path = create_fire_maze()
+    goal = board[len(board) - 1][len(board) - 1]
+    while True:
+        if path is None or path[1].on_fire:
+            sys.exit(1)
+            # return
+        if path[1] == goal:
+            sys.exit(0)
+            # return
+        compute_fire_movement(q)
+        if path[1].on_fire:
+            sys.exit(1)
+        path = astar(path[1], goal, euclidean_dist)
+
+
+# Multi Process version To go quicker but does not display the maze!!
+def fire_strat_custom_multi_proc(q, num_tests,steps_ahead):
+    fail_counter = 0
+
+    processes = []
+    for i in range(num_tests):
+        processes.append(Process(target=fire_strat_custom_helper, args=(q,steps_ahead)))
+        processes[i].start()
+    for p in processes:
+        p.join()
+        if p.exitcode == 1:
+            fail_counter += 1
+    return 100 - ((fail_counter / num_tests) * 100)
+
+
+def fire_strat_custom_helper(q, steps_ahead):
+    path = create_fire_maze()
+    goal = board[len(board) - 1][len(board) - 1]
+    while True:
+        if path is None or path[1].on_fire:
+            sys.exit(1)
+            # return
+        current = path[1]
+        if current == goal:
+            sys.exit(0)
+            # return
+        # draw_maze(path)
+        # pygame.event.get()
+        compute_fire_movement(q)
+        if fire_distance(current) < 2:
+            fire_steps = []
+            for i in range(steps_ahead):
+                fire_steps.append(compute_fire_movement(q))
+            path = astar(current, goal, euclidean_dist)
+            if path is None and len(fire_steps) != 0:
+                reset_fire_prediction(fire_steps[-1])
+                del fire_steps[-1]
+                path = astar(current, goal, euclidean_dist)
+        else:
+            path = astar(current, goal, euclidean_dist)
+
+
+def fire_search(start, goal):
+    fringe = PriorityQueue(-1)
+    discovered = [start]
+    backward_mapping = dict()
+    score = (10 * euclidean_dist(start.row, start.col, goal.row, goal.col)) #+ (fire_distance(start) * -.5)
+    fringe.put(PrioritizedItem(score, start))
+
+    if goal.on_fire:
+        return None
+    if astar(start, goal, euclidean_dist) is None:
+        return None
+    while not fringe.empty():
+        current = fringe.get().item
+        if current == goal:
+            return back_track(backward_mapping, start, current)
+        for neighbor in current.neighbors:
+            if neighbor not in discovered and not neighbor.on_fire:
+                discovered.append(neighbor)
+                backward_mapping[neighbor] = current
+                score = (10 * euclidean_dist(start.row, start.col, goal.row, goal.col)) #+ (fire_distance(start) * -.5)
+                fringe.put(PrioritizedItem(score, neighbor))
+    return None
+
+def fire_distance(start):
+    global fire_locations
+    m = manhattan_dist(start.row, start.col, fire_locations[0][0], fire_locations[0][1])
+    for locs in fire_locations:
+        if manhattan_dist(start.row, start.col, locs[0], locs[1]) < m:
+            m = manhattan_dist(start.row, start.col, locs[0], locs[1])
+    return m
+
+def reset_fire_prediction(step):
+    for cell in step:
+        cell.on_fire = False
+
+def compute_fire_movement(q):
+    new_on_fire = []
+    for row in board:
+        for cell in row:
+            if cell.on_fire:
+                continue
+            on_fire_count = 0
+            for neighbor in cell.neighbors:
+                if neighbor.on_fire:
+                    on_fire_count += 1
+            if on_fire_count >= 1:
+                p = 1 - ((1 - q) ** on_fire_count)
+                if random.random() < p:
+                    cell.set_fire_status(True)
+                    fire_locations.append((cell.row, cell.col))
+                    # fire_locations.sort(key=lambda x: x[0])
+                    new_on_fire.append(cell)
+    return new_on_fire
+
+
+def back_track(backward_mapping, start, current):
+    path = [current]
+    while current != start:
+        current = backward_mapping[current]
+        path.insert(0, current)
+    return path
+
+def intersection(list1, list2):
+    list2_as_set = set(list2)
+    intersect = [value for value in list1 if value in list2_as_set]
+    if len(intersect) == 0:
+        return None
+    return intersect
+
+def print_maze(path):
+    print("  \t", end='')
+    for i in range(len(board)):
+        print("\t" + str(i) + "\t", end='')
+    print()
+    for row in range(len(board)):
+        print("    ", end='')
+        for i in range(len(board)):
+            print("________", end='')
+        print()
+        for col in range(len(board[0]) + 1):
+            if col == 0:
+                print(str(row) + ":\t|", end='')
+            else:
+                print("|", end='')
+            if col < len(board[0]) and board[row][col] in path:
+                print("\t" + movement_symbol + "\t", end='')
+            else:
+                if col < len(board[0]) and board[row][col].is_blocked:
+                    print("\t" + block_symbol + "\t", end='')
+                elif col < len(board[0]) and board[row][col].on_fire:
+                    print("\t" + fire_symbol + "\t", end='')
+                else:
+                    print("\t \t", end='')
+        print()
+    print("    ", end='')
+    for i in range(len(board)):
+        print("________", end='')
+    print()
+
+
+def print_maze_nopath():
+    print("  \t", end='')
+    for i in range(len(board)):
+        print("\t" + str(i) + "\t", end='')
+    print()
+    for row in range(len(board)):
+        print("    ", end='')
+        for i in range(len(board)):
+            print("________", end='')
+        print()
+        for col in range(len(board[0]) + 1):
+            if col == 0:
+                print(str(row) + ":\t|", end='')
+            else:
+                print("|", end='')
+            if col < len(board[0]) and board[row][col].is_blocked:
+                print("\t" + block_symbol + "\t", end='')
+            elif col < len(board[0]) and board[row][col].on_fire:
+                print("\t" + fire_symbol + "\t", end='')
+            else:
+                print("\t \t", end='')
+        print()
+    print("    ", end='')
+    for i in range(len(board)):
+        print("________", end='')
+    print()
+
+
+def draw_maze(path):
+    if path is None:
+        return
+    for row in board:
+        for c in row:
+            if c.is_blocked:
+                pygame.draw.rect(screen, BLACK, (c.row * width, c.col * width, width, width))
+            elif c.on_fire:
+                pygame.draw.rect(screen, RED, (c.row * width, c.col * width, width, width))
+            elif c in path:
+                pygame.draw.rect(screen, GREEN, (c.row * width, c.col * width, width, width))
+            else:
+                pygame.draw.rect(screen, WHITE, (c.row * width, c.col * width, width, width))
+    pygame.display.update()
+
