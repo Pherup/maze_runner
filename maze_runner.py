@@ -176,13 +176,19 @@ def assign_board_neighbors(dim):
 
 
 def dfs(start,goal):
+    global max_fringe_size
     fringe = LifoQueue(-1)
     discovered = [start]
     backward_mapping = dict()
     fringe.put(start)
-
+    fringe_size = 1;
+    max_fringe_size = 0;
+    
     while not fringe.empty():
+        if max_fringe_size < fringe_size:
+            max_fringe_size = fringe_size
         current = fringe.get()
+        fringe_size -= 1
         if current == goal:
             return back_track(backward_mapping, start, current)
         for neighbor in current.neighbors:
@@ -190,7 +196,8 @@ def dfs(start,goal):
                 discovered.append(neighbor)
                 backward_mapping[neighbor] = current
                 fringe.put(neighbor)
-
+                fringe_size += 1
+    return []
 
 def bfs(start, goal):
     fringe = Queue(-1)
@@ -221,6 +228,9 @@ def astar(start, goal, hFunc):
     global max_fringe_size
     global num_nodes_explored
     global nodes_explored
+    max_fringe_size = 0
+    num_nodes_explored = 0
+    nodes_explored = []
     fringeq = PriorityQueue(-1)
     backward_mapping = dict()
 
@@ -256,7 +266,7 @@ def astar(start, goal, hFunc):
                 fringeq.put(PrioritizedItem(fscores[neighbor], neighbor))
                 if(fringeq.qsize() > max_fringe_size):
                     max_fringe_size = fringeq.qsize()
-    return None
+    return []
 
 
 def euclidean_dist(x1, y1, x2, y2):
