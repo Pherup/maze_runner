@@ -332,44 +332,76 @@ def create_hard_maze_manhattan_max_nodes(dim, p):
     print(hard_node_size)
     return None
 
+# Our aglorithm for creating a fire maze
 def create_fire_maze():
+    #variable we used to keep track of fire locations to measure fire distance to any cell
     global fire_locations
     fire_locations.clear()
+
+    # our approach was to create a maze, put a fire in the maze at random, solve the maze to see if it can be solved
+    # if the maze can be solved with current location of the fire we return the path We returned the path only for
+    # convenience in other functions so astar would not have to be called again if that's the path we needed to take
     while True:
+        # create any maze
         create_maze(optimal_dim, p0)
+
+        # set start and goal for the maze
         start = board[0][0]
         goal = board[optimal_dim - 1][optimal_dim - 1]
+
+        #find random fire location
         fire_loc = (random.randint(0, optimal_dim - 1), random.randint(0, optimal_dim - 1))
+
+        #check to make sure the fire location is not the goal or start state or that the current location is blocked
         if board[fire_loc[0]][fire_loc[1]].is_blocked or fire_loc == (0, 0) \
                 or fire_loc == (optimal_dim - 1, optimal_dim - 1):
             continue
+
+        # check to see if the maze is solvable and if there is a path from the fire location to the start state
         else:
             if astar(start, board[fire_loc[0]][fire_loc[1]], manhattan_dist) is None \
                     or astar(start, goal, manhattan_dist) is None:
                 continue
             board[fire_loc[0]][fire_loc[1]].set_fire_status(True)
 
+
         path = astar(start, goal, manhattan_dist)
 
+        # checks to see if maze is solvable
         if path is None:
             continue
+
         fire_locations.append((fire_loc[0], fire_loc[1]))
         return path
 
 
+#our implementation for fire strategy 1
 def fire_strat_1(q, num_tests, display):
     pygame.display.set_caption('Fire Strategy 1')
     global board
+
+    #variable for measuring how many times it has failed
     fail_counter = 0
+
+    #loops for number of tests
     for i in range(num_tests):
+        #Print statment to reassure the code has not frozen
         print("\r Running Test " + str(i), end="")
+        #creates fire maze and gets path
         path = create_fire_maze()
-        goal = board[len(board) - 1][len(board) - 1]
+
+        # loops through each cell in the path to make sure its not on fire, on each loop it computes the fire movement
+        # this makes sure that it does not count as failed when a previous cell was occupied and was on fire
         for cell in path:
+            # check to see if the cell was on fire
             if cell.on_fire:
                 fail_counter += 1
                 break
+
+            #computes the movement of the fire and updates it on the maze
             compute_fire_movement(q)
+
+            #To display the maze
             if display:
                 draw_maze([cell])
                 pygame.event.get()
@@ -377,52 +409,95 @@ def fire_strat_1(q, num_tests, display):
     print("\r", end="")
     return 100 - ((fail_counter / num_tests) * 100)
 
-
+# our implementation for fire strategy 2, we have a mulit processed version of this that does not display the mazes
+# below the main method. The multi processed verison is for speed.
 def fire_strat_2(q, num_tests):
     pygame.display.set_caption('Fire Strategy 2')
+
+    # variable for measuring how many times it has failed
     fail_counter = 0
+
+    #loops for number of tests
     for i in range(num_tests):
         print("\r Running Test " + str(i), end="")
+
+        #gets initial fire maze and initial path
         path = create_fire_maze()
         goal = board[len(board) - 1][len(board) - 1]
+
+        #loops till current location is goal or current location is on fire updates path and
         while True:
+            #checks if maze is not solvedable (when path is none) or current location is on fire
             if path is None or path[0].on_fire:
+                #Fail is incremented
                 fail_counter += 1
                 break
             elif path[1] == goal:
                 break
+
+            #Fire movement is computed and maze is drawn
             compute_fire_movement(q)
             draw_maze([path[0]])
             pygame.event.get()
+
+            # checks if next move is on fire, if so its a fail.
+            # Otherwise recomputes path with next position as starting node
             if path[1].on_fire:
-                sys.exit(1)
+                fail_counter += 1
+                break
+
+            # recomputes path
             path = astar(path[1], goal, euclidean_dist)
     print("\r", end="")
     return 100 - ((fail_counter / num_tests) * 100)
 
 
-
+# our implementation of fire strategy (the custom one) This strategy basically mimmics strategy 2
+# if the distance to the flame is less than the distance threshold then it recomputes
+# with a future prediction of what the fire would look like
 def fire_strat_custom(q, num_tests, steps_ahead):
     pygame.display.set_caption('Fire Strategy Custom')
+
+    # variable for measuring how many times it has failed
     fail_counter = 0
     for i in range(num_tests):
         print("\r Running Test " + str(i), end="")
+
+        # gets initial fire maze and initial path
         path = create_fire_maze()
         goal = board[len(board) - 1][len(board) - 1]
+
+        # loops till current location is goal or current location is on fire updates path and
         while True:
+
+            #c hecks if maze is solvalble or next position is on fire
             if path is None or path[1].on_fire:
                 fail_counter += 1
+
+            # sets current to next
             current = path[1]
+
+            # if current is goal break
             if current == goal:
                 break
+
+            # Drawing maze to pygame
             draw_maze(path)
             pygame.event.get()
+
+            # computes new fire movement
             compute_fire_movement(q)
+
+            #checks distance threshold and if it is less than 2 it predicts ahead steps and recomputes path
             if fire_distance(current) < 2:
                 fire_steps = []
+                # computes steps ahead adds it to a list to reset after new path is found
                 for i in range(steps_ahead):
                     fire_steps.append(compute_fire_movement(q))
                 path = astar(current, goal, euclidean_dist)
+
+                # if a new path isnt found it backtracks one step that it predicted and then retries for path doing the
+                # same until it either finds a path or fails at finding a path at the current state of the maze
                 if path is None and len(fire_steps) != 0:
                     reset_fire_prediction(fire_steps[-1])
                     del fire_steps[-1]
@@ -861,7 +936,93 @@ def assign_board_neighbors(dim):
                     board[row][col].add_neighbor(board[row][col + 1])
 
 
+def back_track(backward_mapping, start, current):
+    path = [current]
+    while current != start:
+        current = backward_mapping[current]
+        path.insert(0, current)
+    return path
 
+def intersection(list1, list2):
+    list2_as_set = set(list2)
+    intersect = [value for value in list1 if value in list2_as_set]
+    if len(intersect) == 0:
+        return None
+    return intersect
+
+def print_maze(path):
+    print("  \t", end='')
+    for i in range(len(board)):
+        print("\t" + str(i) + "\t", end='')
+    print()
+    for row in range(len(board)):
+        print("    ", end='')
+        for i in range(len(board)):
+            print("________", end='')
+        print()
+        for col in range(len(board[0]) + 1):
+            if col == 0:
+                print(str(row) + ":\t|", end='')
+            else:
+                print("|", end='')
+            if col < len(board[0]) and board[row][col] in path:
+                print("\t" + movement_symbol + "\t", end='')
+            else:
+                if col < len(board[0]) and board[row][col].is_blocked:
+                    print("\t" + block_symbol + "\t", end='')
+                elif col < len(board[0]) and board[row][col].on_fire:
+                    print("\t" + fire_symbol + "\t", end='')
+                else:
+                    print("\t \t", end='')
+        print()
+    print("    ", end='')
+    for i in range(len(board)):
+        print("________", end='')
+    print()
+
+
+def print_maze_nopath():
+    print("  \t", end='')
+    for i in range(len(board)):
+        print("\t" + str(i) + "\t", end='')
+    print()
+    for row in range(len(board)):
+        print("    ", end='')
+        for i in range(len(board)):
+            print("________", end='')
+        print()
+        for col in range(len(board[0]) + 1):
+            if col == 0:
+                print(str(row) + ":\t|", end='')
+            else:
+                print("|", end='')
+            if col < len(board[0]) and board[row][col].is_blocked:
+                print("\t" + block_symbol + "\t", end='')
+            elif col < len(board[0]) and board[row][col].on_fire:
+                print("\t" + fire_symbol + "\t", end='')
+            else:
+                print("\t \t", end='')
+        print()
+    print("    ", end='')
+    for i in range(len(board)):
+        print("________", end='')
+    print()
+
+
+def draw_maze(path):
+    if path is None:
+        return
+    for row in board:
+        for c in row:
+            if c.is_blocked:
+                pygame.draw.rect(screen, BLACK, (c.row * width, c.col * width, width, width))
+            elif c.on_fire:
+                pygame.draw.rect(screen, RED, (c.row * width, c.col * width, width, width))
+            elif c in path:
+                pygame.draw.rect(screen, GREEN, (c.row * width, c.col * width, width, width))
+            else:
+                pygame.draw.rect(screen, WHITE, (c.row * width, c.col * width, width, width))
+    pygame.display.update()
 
 # Multi Process version To go quicker but does not display the maze!!
 def fire_strat_2_multi_proc(q, num_tests):
@@ -997,93 +1158,3 @@ def compute_fire_movement(q):
                     # fire_locations.sort(key=lambda x: x[0])
                     new_on_fire.append(cell)
     return new_on_fire
-
-
-def back_track(backward_mapping, start, current):
-    path = [current]
-    while current != start:
-        current = backward_mapping[current]
-        path.insert(0, current)
-    return path
-
-def intersection(list1, list2):
-    list2_as_set = set(list2)
-    intersect = [value for value in list1 if value in list2_as_set]
-    if len(intersect) == 0:
-        return None
-    return intersect
-
-def print_maze(path):
-    print("  \t", end='')
-    for i in range(len(board)):
-        print("\t" + str(i) + "\t", end='')
-    print()
-    for row in range(len(board)):
-        print("    ", end='')
-        for i in range(len(board)):
-            print("________", end='')
-        print()
-        for col in range(len(board[0]) + 1):
-            if col == 0:
-                print(str(row) + ":\t|", end='')
-            else:
-                print("|", end='')
-            if col < len(board[0]) and board[row][col] in path:
-                print("\t" + movement_symbol + "\t", end='')
-            else:
-                if col < len(board[0]) and board[row][col].is_blocked:
-                    print("\t" + block_symbol + "\t", end='')
-                elif col < len(board[0]) and board[row][col].on_fire:
-                    print("\t" + fire_symbol + "\t", end='')
-                else:
-                    print("\t \t", end='')
-        print()
-    print("    ", end='')
-    for i in range(len(board)):
-        print("________", end='')
-    print()
-
-
-def print_maze_nopath():
-    print("  \t", end='')
-    for i in range(len(board)):
-        print("\t" + str(i) + "\t", end='')
-    print()
-    for row in range(len(board)):
-        print("    ", end='')
-        for i in range(len(board)):
-            print("________", end='')
-        print()
-        for col in range(len(board[0]) + 1):
-            if col == 0:
-                print(str(row) + ":\t|", end='')
-            else:
-                print("|", end='')
-            if col < len(board[0]) and board[row][col].is_blocked:
-                print("\t" + block_symbol + "\t", end='')
-            elif col < len(board[0]) and board[row][col].on_fire:
-                print("\t" + fire_symbol + "\t", end='')
-            else:
-                print("\t \t", end='')
-        print()
-    print("    ", end='')
-    for i in range(len(board)):
-        print("________", end='')
-    print()
-
-
-def draw_maze(path):
-    if path is None:
-        return
-    for row in board:
-        for c in row:
-            if c.is_blocked:
-                pygame.draw.rect(screen, BLACK, (c.row * width, c.col * width, width, width))
-            elif c.on_fire:
-                pygame.draw.rect(screen, RED, (c.row * width, c.col * width, width, width))
-            elif c in path:
-                pygame.draw.rect(screen, GREEN, (c.row * width, c.col * width, width, width))
-            else:
-                pygame.draw.rect(screen, WHITE, (c.row * width, c.col * width, width, width))
-    pygame.display.update()
-
