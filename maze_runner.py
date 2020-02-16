@@ -239,7 +239,7 @@ def create_fire_maze():
     global fire_locations
     fire_locations.clear()
     while True:
-        create_maze(optimal_dim, optimal_p)
+        create_maze(optimal_dim, p0)
         start = board[0][0]
         goal = board[optimal_dim - 1][optimal_dim - 1]
         fire_loc = (random.randint(0, optimal_dim - 1), random.randint(0, optimal_dim - 1))
@@ -348,44 +348,28 @@ def fire_strat_custom(q, num_tests, steps_ahead):
     fail_counter = 0
     for i in range(num_tests):
         print("\r Running Test " + str(i), end="")
-        create_fire_maze()
-        path = fire_search(board[0][0], board[optimal_dim - 1][optimal_dim - 1])
+        path = create_fire_maze()
         goal = board[len(board) - 1][len(board) - 1]
         while True:
-            if path is None or path[0].on_fire:
+            if path is None or path[1].on_fire:
                 fail_counter += 1
+            current = path[1]
+            if current == goal:
                 break
-
-            current = path[0]
-            draw_maze([current])
+            draw_maze(path)
             pygame.event.get()
-
-            if path[1] == goal:
-                break
             compute_fire_movement(q)
-            if fire_distance(current) < 20:
-                fire_reset = []
-                step_length = []
-                for j in range(steps_ahead):
-                    temp = compute_fire_movement(q)
-                    step_length.append(len(temp))
-                    fire_reset = fire_reset + temp
-
-                while True:
+            if fire_distance(current) < 2:
+                fire_steps = []
+                for i in range(steps_ahead):
+                    fire_steps.append(compute_fire_movement(q))
+                path = astar(current, goal, euclidean_dist)
+                if path is None and len(fire_steps) != 0:
+                    reset_fire_prediction(fire_steps[-1])
+                    del fire_steps[-1]
                     path = astar(current, goal, euclidean_dist)
-                    if path is not None:
-                        for cell in fire_reset:
-                            cell.on_fire = False
-                        break
-                    if len(fire_reset) == 0:
-                        break
-                    if path is None:
-                        fire_reset[len(fire_reset) - 1].on_fire = False
-                        fire_locations.remove(
-                            (fire_reset[len(fire_reset) - 1].row, fire_reset[len(fire_reset) - 1].col))
-                        fire_reset.pop(len(fire_reset) - 1)
-            if path is not None:
-                path = path[1:]
+            else:
+                path = astar(current, goal, euclidean_dist)
     print("\r", end="")
     return 100 - ((fail_counter / num_tests) * 100)
 
@@ -846,7 +830,7 @@ if __name__ == '__main__':
 
     q = 0.0
     q_increment = 0.025
-    q_max = .5
+    q_max = .325
 
     output = None
     try:
@@ -907,31 +891,15 @@ if __name__ == '__main__':
         if input("\nWould you like to display all the tests? (it runs significantly slower when displaying) "
                  "enter \"y\" for Yes and enter anything else for No\n") == "y":
             while q <= q_max:
-                output = fire_strat_custom(q, num_tests, 4)
+                output = fire_strat_custom(q, num_tests, 1)
                 print(str(q) + "\t" + str(output))
                 q += q_increment
                 q = round(q, 3)
         else:
             while q <= q_max:
-                output = fire_strat_custom_multi_proc(q, num_tests, 4)
+                output = fire_strat_custom_multi_proc(q, num_tests, 1)
                 print(str(q) + "\t" + str(output))
                 q += q_increment
                 q = round(q, 3)
     except ValueError:
         None
-
-
-    num_tests = int(input("enter num tests"))
-
-    while q <= .325:
-        output = fire_strat_2_multi_proc(q, num_tests)
-        print(str(q) + "\t" + str(output))
-        q += q_increment
-        q = round(q, 3)
-
-    q = 0.00
-    while q <= .325:
-        output = fire_strat_custom_multi_proc(q, num_tests, 3)
-        print(str(q) + "\t" + str(output))
-        q += q_increment
-        q = round(q, 3)
