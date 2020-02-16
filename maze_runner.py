@@ -978,7 +978,7 @@ if __name__ == '__main__':
 
 
     try:
-        dim = int(input("\n\nTo run path length vs maze density from [0,p0] enter the dim you would like to"
+        dim = int(input("\n\nTo run path length vs maze density from [0,p0] enter the dim you would like to "
                         "run out algorithm with. Enter the Dim to start, enter anything else to continue \n"))
         num_tests = 50
         p = 0
@@ -996,7 +996,7 @@ if __name__ == '__main__':
     except ValueError:
         None
 
-    if input("\n\nTo run our way of measuring which heuristic is better press enter,"
+    if input("\n\nTo run our way of measuring which heuristic is better press enter, "
              "\notherwise press any other key followed by enter\n") == "":
         num_tests = 1000
         max_fringe_ed = 0
@@ -1086,7 +1086,7 @@ if __name__ == '__main__':
     screen.fill(BLUE)
     pygame.display.flip()
 
-    if input("\n\nTo run our testing on if on the same map there are some nodes that BDBFS expands that A* does not"
+    if input("\n\nTo run our testing on if on the same map there are some nodes that BDBFS expands that A* does not "
              "Press enter, otherwise press any other key followed by enter\n") == "":
         num_tests = 100
         for i in range(num_tests):
