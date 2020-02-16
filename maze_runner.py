@@ -118,7 +118,7 @@ def dfs(start, goal):
     # we kept track of data such as this with global variables
     fringe_size = 1
     max_fringe_size = 0
-
+    # while the fringe was not empty we looped though each cell from the fringe.
     while not fringe.empty():
 
         # updating max fringe size
@@ -210,25 +210,34 @@ def astar(start, goal, hFunc):
 
 def bfsBD(start, goal):
     global nodes_explored
-    # We used a queue as our fringe
+    # We used a queue as our fringe for the front and back
     fringe_front = Queue(-1)
     fringe_back = Queue(-1)
+    # We created a list of nodes to keep track of nodes we have seen already
     discovered_front = [start]
     discovered_back = [goal]
+    # We used a dictionary to keep track of which neighbor came from which cell (parent and child)
     backward_mapping = dict()
     forward_mapping = dict()
     fringe_front.put(start)
     fringe_back.put(goal)
 
+    # while the fringe was not empty we looped though each cell from the fringe.
     while not (fringe_front.empty() or fringe_back.empty()):
+        #running bfs from front
         if not fringe_front.empty():
+            #get the top cell in the fringe
             current_front = fringe_front.get()
             nodes_explored.append(current_front)
+            # for all the neighbors for the current node it will add them to discovered, backward mapping, and fringe if
+            # the node is not already discovered
             for neighbor in current_front.neighbors:
                 if neighbor not in discovered_front:
                     discovered_front.append(neighbor)
                     backward_mapping[neighbor] = current_front
                     fringe_front.put(neighbor)
+            #checking if there is an intersection between the front and the back
+            #if there is a intersection then reconstruct a new path.
             intersect = intersection(discovered_front, discovered_back)
             if intersect is not None:
                 disc = intersect[0]
@@ -237,14 +246,20 @@ def bfsBD(start, goal):
                 path_back_to_intersection.reverse()
                 path_back_to_intersection.remove(intersect[0])
                 return path_front_to_intersection + path_back_to_intersection
+        # running bfs from back
         if not fringe_back.empty():
+            # get the top cell in the fringe
             current_back = fringe_back.get()
             nodes_explored.append(current_back)
+            # for all the neighbors for the current node it will add them to discovered, backward mapping, and fringe if
+            # the node is not already discovered
             for neighbor in current_back.neighbors:
                 if neighbor not in discovered_back:
                     discovered_back.append(neighbor)
                     forward_mapping[neighbor] = current_back
                     fringe_back.put(neighbor)
+            # checking if there is an intersection between the front and the back
+            # if there is a intersection then reconstruct a new path.
             intersect = intersection(discovered_front, discovered_back)
             if intersect is not None:
                 disc = intersect[0]
