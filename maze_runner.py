@@ -248,36 +248,68 @@ def manhattan_dist(x1, y1, x2, y2):
 # the max size of the fringe while running DFS
 def create_hard_maze_dfs_max_fringe(dim, p):
     global max_fringe_size
+
+    # initialize maze and run dfs on it to find it's max path
     create_maze(dim, p)
-    max_path = dfs(board[0][0], board[dim-1][dim-1])
+    max_path = dfs(board[0][0], board[dim - 1][dim - 1])
+
+    # loop to make sure the maze we created is solvable and if not reinitialize until we find one that is
     while len(max_path) < 1:
         create_maze(dim, p)
-        max_path = dfs(board[0][0], board[dim-1][dim-1])
+        max_path = dfs(board[0][0], board[dim - 1][dim - 1])
+
+    # initialize the t to track temperature and no_change
+    # to track how long it has been since the program last kept a neighbor
     t = 1
     no_change = 0
+
+    # current size of the fringe for the current hard maze state is set with current fringe size from dfs solving
     hard_fringe_size = max_fringe_size
     print()
-    while no_change < 2*dim**2:
+
+    # number of iterations was chosen though trials and scales to maze size
+    while no_change < 2 * dim ** 2:
         print("\rMax Fringe Size: " + str(hard_fringe_size) + " With " + str(no_change) +
               " steps since no changes have been made", end="")
-        temperature = 1/t
-        row_rand = random.randrange(0,dim)
-        col_rand = random.randrange(0,dim)
-        if not((row_rand == dim-1) and (col_rand == dim-1)) and not((row_rand == 0) and (col_rand == 0)):
 
+        # temperature goes to 0 as t grows
+        temperature = 1 / t
+
+        # a random cell is chosen by generating 2 randoms for row and column
+        row_rand = random.randrange(0, dim)
+        col_rand = random.randrange(0, dim)
+
+        # if the cell is not the starting or the end cell then continue
+        if not ((row_rand == dim - 1) and (col_rand == dim - 1)) and not ((row_rand == 0) and (col_rand == 0)):
+
+            # if the randomly chosen cell is blocked unblock it and if unblocked block it then
+            # reassign neighbors for new configuration
             if board[row_rand][col_rand].is_blocked:
                 board[row_rand][col_rand].set_block_status(False)
             else:
                 board[row_rand][col_rand].set_block_status(True)
             assign_board_neighbors(dim)
-            temp_path = dfs(board[0][0],board[dim - 1][dim - 1])
+
+            # temporary path and fringesize are retrieved after running dfs
+            # again on the neighbor state or x'
+            temp_path = dfs(board[0][0], board[dim - 1][dim - 1])
             temp_fringe_size = max_fringe_size
-            P = math.exp(-0.1*(hard_fringe_size-temp_fringe_size)/temperature)
+
+            # P chance of a "bad" choice generated based on new values
+            P = math.exp(-0.1 * (hard_fringe_size - temp_fringe_size) / temperature)
+
+            # if x' has a larger max fringe, F(x'), keep the new neighbor.
+            # if new value is smaller if random generation is less than P generated before we instead make "bad" choice.
+            # Regardless of if it is greater or less if we make x = x' we then increase temperature and set the number
+            # of iterations without a change equal to 0
             if (temp_fringe_size > hard_fringe_size) or (temp_fringe_size < hard_fringe_size and random.random() < P):
                 hard_fringe_size = temp_fringe_size
                 max_path = temp_path
                 t += 1
                 no_change = 0
+
+            # If we do not make the choice we revert the cell back to it's state in x and increase the number
+            # of iterations without a change by 1
             else:
                 no_change += 1
                 if board[row_rand][col_rand].is_blocked:
@@ -288,48 +320,80 @@ def create_hard_maze_dfs_max_fringe(dim, p):
     print()
     return None
 
+
 # Function for creating a hard maze. This algorithm uses simulated annealing and measures the hardness using
 # the max nodes explored by A star using manhattan distance as the heursitc
 def create_hard_maze_manhattan_max_nodes(dim, p):
     global board
+
+    # initialize maze and get max path of A* with manhattan distance
     create_maze(dim, p)
-    (max_path) = astar(board[0][0], board[dim-1][dim-1], manhattan_dist)
+    (max_path) = astar(board[0][0], board[dim - 1][dim - 1], manhattan_dist)
+
+    # Make sure maze is solvable and if not get one that is
     while len(max_path) < 1:
         create_maze(dim, p)
-        (max_path) = astar(board[0][0], board[dim-1][dim-1], manhattan_dist)
+        (max_path) = astar(board[0][0], board[dim - 1][dim - 1], manhattan_dist)
+
+    # initialize the t to track temperature and no_change
+    # to track how long it has been since the program last kept a neighbor
     t = 1
     no_change = 0
+
+    # number of nodes explored for hard maze intially is number from A*
     hard_node_size = num_nodes_explored
-    print(hard_node_size)
-    print_maze_nopath()
-    print_maze(max_path)
-    while no_change < dim**2:
-        temperature= 1/t
-        row_rand = random.randrange(0,dim)
-        col_rand = random.randrange(0,dim)
-        if not((row_rand == dim-1) and (col_rand == dim-1)) and not((row_rand == 0) and (col_rand == 0)):
+    print()
+
+    # number of iterations was chosen though trials and scales to maze size
+    while no_change < 2 * dim ** 2:
+        print("\rMax Nodes Expanded " + str(hard_node_size) + " With " + str(no_change) +
+              " steps since no changes have been made", end="")
+
+        # temperature goes to 0 as t grows
+        temperature = 1 / t
+
+        # a random cell is chosen by generating 2 randoms for row and column
+        row_rand = random.randrange(0, dim)
+        col_rand = random.randrange(0, dim)
+
+        # if the cell is not the starting or the end cell then continue
+        if not ((row_rand == dim - 1) and (col_rand == dim - 1)) and not ((row_rand == 0) and (col_rand == 0)):
+
+            # if the randomly chosen cell is blocked unblock it and if unblocked block it then
+            # reassign neighbors for new configuration
             if board[row_rand][col_rand].is_blocked:
                 board[row_rand][col_rand].set_block_status(False)
             else:
                 board[row_rand][col_rand].set_block_status(True)
             assign_board_neighbors(dim)
-            temp_path = astar(board[0][0], board[dim-1][dim-1], manhattan_dist)
-            P = math.exp(-0.1*(hard_node_size-num_nodes_explored)/temperature)
+
+            # temporary path and fringesize are retrieved after running dfs
+            # again on the neighbor state or x'
+            temp_path = astar(board[0][0], board[dim - 1][dim - 1], manhattan_dist)
+
+            # P chance of a "bad" choice generated based on new values
+            P = math.exp(-0.1 * (hard_node_size - num_nodes_explored) / temperature)
+
+            # if x' explored more nodes, F(x'), keep the new neighbor.
+            # if new value is smaller if random generation is less than P generated before we instead make "bad" choice.
+            # Regardless of if it is greater or less if we make x = x' we then increase temperature and set the number
+            # of iterations without a change equal to 0
             if (num_nodes_explored > hard_node_size) or (num_nodes_explored < hard_node_size and random.random() < P):
                 hard_node_size = num_nodes_explored
                 max_path = temp_path
                 t += 1
                 no_change = 0
+
+            # If we do not make the choice we revert the cell back to it's state in x and increase the number
+            # of iterations without a change by 1
             else:
                 no_change += 1
                 if board[row_rand][col_rand].is_blocked:
                     board[row_rand][col_rand].set_block_status(False)
                 else:
                     board[row_rand][col_rand].set_block_status(True)
-
-    print_maze_nopath()
-    print_maze(max_path)
-    print(hard_node_size)
+                    
+    print()
     return None
 
 # Our aglorithm for creating a fire maze
