@@ -101,7 +101,7 @@ def bfs(start, goal):
                 backward_mapping[neighbor] = current
                 fringe.put(neighbor)
 
-# Our DFS implementation (Same as BFS only with the queue changed to a stack
+# Our DFS implementation (Same as BFS only with the queue changed to a stack)
 def dfs(start, goal):
     global max_fringe_size
 
@@ -148,43 +148,60 @@ def dfs(start, goal):
 
 def astar(start, goal, hFunc):
     global max_fringe_size
+
+    #Taking note of all the nodes that are being explored, and how many of them are being explored.
+    # we kept track of data such as this with global variables
     global num_nodes_explored
     global nodes_explored
     max_fringe_size = 0
     num_nodes_explored = 0
     nodes_explored = []
+    # We used a queue as our fringe
     fringeq = PriorityQueue(-1)
+    # we used a dictionary to keep track of which neighbor came from which cell (parent and child)
     backward_mapping = dict()
 
+    #how many nodes deep it is from start to where we are currently in the path.
     gscores = dict()
     gscores[start] = 0
+    #gscore+hueristic function that we decided to pick.
     fscores = dict()
     fscores[start] = gscores[start] + hFunc(start.row, start.col, goal.row, goal.col)
 
     fringeq.put(PrioritizedItem(fscores[start], start))
     while not fringeq.empty():
+        # getting the top of the priority Queue
         current = fringeq.get().item
         nodes_explored.append(current)
         num_nodes_explored += 1
+        # checks if the current node is the goal
         if current == goal:
             return back_track(backward_mapping, start, current)
+        # adds all the neighbors to the priority queue
         for neighbor in current.neighbors:
+            #if the neighbor is on fire, moves on to the next.
             if neighbor.on_fire:
                 continue
+
+            #checking to see if the neighbor already has a g score, and if it doesnt you will assign it to infinity.
             try:
                 gscores[neighbor]
             except KeyError:
                 gscores[neighbor] = math.inf
+            #recalculates g based on the current position in the path
             recalc_g = gscores[current] + 1
+            #checks if the new g score is better than the old g score.
             if recalc_g < gscores[neighbor]:
+                #updates backward mapping and updates g score and f score.
                 backward_mapping[neighbor] = current
                 gscores[neighbor] = recalc_g
                 fscores[neighbor] = gscores[neighbor] + hFunc(neighbor.row, neighbor.col, goal.row, goal.col)
-
+                #removes current neighbor from fringe if it was already present with a different priority.
                 for node in fringeq.queue:
                     if node.item == neighbor:
                         fringeq.queue.remove(node)
                         break
+                #updates priority and adds it to the fringe
                 fringeq.put(PrioritizedItem(fscores[neighbor], neighbor))
                 if (fringeq.qsize() > max_fringe_size):
                     max_fringe_size = fringeq.qsize()
@@ -193,6 +210,7 @@ def astar(start, goal, hFunc):
 
 def bfsBD(start, goal):
     global nodes_explored
+    # We used a queue as our fringe
     fringe_front = Queue(-1)
     fringe_back = Queue(-1)
     discovered_front = [start]
