@@ -43,7 +43,7 @@ screen_size = (optimal_dim * width + 10, optimal_dim * width +10 )
 screen = pygame.display.set_mode(screen_size)
 screen.fill(BLUE)
 pygame.display.flip()
-
+pygame.event.get()
 
 max_fringe_size = 0
 num_nodes_explored = 0
@@ -255,10 +255,12 @@ def bfsBD(start, goal):
                 return path_front_to_intersection + path_back_to_intersection
     return None
 
+
+# Heuristic functions for Astar
 def euclidean_dist(x1, y1, x2, y2):
     return math.sqrt(((x1 - x2) ** 2) + ((y1 - y2) ** 2))
 
-
+# Heuristic functions for Astar
 def manhattan_dist(x1, y1, x2, y2):
     return abs(x1 - x2) + abs(y1 - y2)
 
@@ -589,6 +591,254 @@ def fire_strat_custom(q, num_tests, steps_ahead):
     print("\r", end="")
     return 100 - ((fail_counter / num_tests) * 100)
 
+#helper function to compute the fire movement
+def compute_fire_movement(q):
+    new_on_fire = []
+    for row in board:
+        for cell in row:
+            if cell.on_fire:
+                continue
+            on_fire_count = 0
+            for neighbor in cell.neighbors:
+                if neighbor.on_fire:
+                    on_fire_count += 1
+            if on_fire_count >= 1:
+                p = 1 - ((1 - q) ** on_fire_count)
+                if random.random() < p:
+                    cell.set_fire_status(True)
+                    fire_locations.append((cell.row, cell.col))
+                    # fire_locations.sort(key=lambda x: x[0])
+                    new_on_fire.append(cell)
+    return new_on_fire
+
+
+# ALL HELPER FUNCTIONS
+
+#helper function for maze creation to initialize the graph of the maze
+def assign_board_neighbors(dim):
+    for row in range(dim):
+        for col in range(dim):
+            if row != 0:
+                if not board[row - 1][col].is_blocked:
+                    board[row][col].add_neighbor(board[row - 1][col])
+            if row != (dim - 1):
+                if not board[row + 1][col].is_blocked:
+                    board[row][col].add_neighbor(board[row + 1][col])
+            if col != 0:
+                if not board[row][col - 1].is_blocked:
+                    board[row][col].add_neighbor(board[row][col - 1])
+            if col != (dim - 1):
+                if not board[row][col + 1].is_blocked:
+                    board[row][col].add_neighbor(board[row][col + 1])
+
+#helper function for taking backward mapping and giving path
+def back_track(backward_mapping, start, current):
+    path = [current]
+    while current != start:
+        current = backward_mapping[current]
+        path.insert(0, current)
+    return path
+
+#helper function for finding the intersection of 2 lists
+def intersection(list1, list2):
+    list2_as_set = set(list2)
+    intersect = [value for value in list1 if value in list2_as_set]
+    if len(intersect) == 0:
+        return None
+    return intersect
+
+def print_maze(path):
+    print("  \t", end='')
+    for i in range(len(board)):
+        print("\t" + str(i) + "\t", end='')
+    print()
+    for row in range(len(board)):
+        print("    ", end='')
+        for i in range(len(board)):
+            print("________", end='')
+        print()
+        for col in range(len(board[0]) + 1):
+            if col == 0:
+                print(str(row) + ":\t|", end='')
+            else:
+                print("|", end='')
+            if col < len(board[0]) and board[row][col] in path:
+                print("\t" + movement_symbol + "\t", end='')
+            else:
+                if col < len(board[0]) and board[row][col].is_blocked:
+                    print("\t" + block_symbol + "\t", end='')
+                elif col < len(board[0]) and board[row][col].on_fire:
+                    print("\t" + fire_symbol + "\t", end='')
+                else:
+                    print("\t \t", end='')
+        print()
+    print("    ", end='')
+    for i in range(len(board)):
+        print("________", end='')
+    print()
+
+
+def print_maze_nopath():
+    print("  \t", end='')
+    for i in range(len(board)):
+        print("\t" + str(i) + "\t", end='')
+    print()
+    for row in range(len(board)):
+        print("    ", end='')
+        for i in range(len(board)):
+            print("________", end='')
+        print()
+        for col in range(len(board[0]) + 1):
+            if col == 0:
+                print(str(row) + ":\t|", end='')
+            else:
+                print("|", end='')
+            if col < len(board[0]) and board[row][col].is_blocked:
+                print("\t" + block_symbol + "\t", end='')
+            elif col < len(board[0]) and board[row][col].on_fire:
+                print("\t" + fire_symbol + "\t", end='')
+            else:
+                print("\t \t", end='')
+        print()
+    print("    ", end='')
+    for i in range(len(board)):
+        print("________", end='')
+    print()
+
+
+def draw_maze(path):
+    if path is None:
+        return
+    for row in board:
+        for c in row:
+            if c.is_blocked:
+                pygame.draw.rect(screen, BLACK, (c.row * width, c.col * width, width, width))
+            elif c.on_fire:
+                pygame.draw.rect(screen, RED, (c.row * width, c.col * width, width, width))
+            elif c in path:
+                pygame.draw.rect(screen, GREEN, (c.row * width, c.col * width, width, width))
+            else:
+                pygame.draw.rect(screen, WHITE, (c.row * width, c.col * width, width, width))
+    pygame.display.update()
+
+# Multi Process version To go quicker but does not display the maze!!
+def fire_strat_2_multi_proc(q, num_tests):
+    fail_counter = 0
+
+    processes = []
+    # print("starting ", end="")
+    for i in range(num_tests):
+        print("\r Running Test " + str(i), end="")
+        processes.append(Process(target=fire_strat_2_helper, args=(q,)))
+        processes[i].start()
+        # print("\r" + str(i), end="")
+    # print("\nJoining ", end="")
+    for p in processes:
+        p.join()
+        # print("#", end="")
+        # print(p.exitcode)
+        if p.exitcode == 1:
+            fail_counter += 1
+    # print("Fail Counter: " + str(fail_counter))
+    print("\r", end="")
+    return 100 - ((fail_counter / num_tests) * 100)
+
+
+def fire_strat_2_helper(q):
+    path = create_fire_maze()
+    goal = board[len(board) - 1][len(board) - 1]
+    while True:
+        if path is None or path[1].on_fire:
+            sys.exit(1)
+            # return
+        if path[1] == goal:
+            sys.exit(0)
+            # return
+        compute_fire_movement(q)
+        if path[1].on_fire:
+            sys.exit(1)
+        path = astar(path[1], goal, euclidean_dist)
+
+
+# Multi Process version To go quicker but does not display the maze!!
+def fire_strat_custom_multi_proc(q, num_tests,steps_ahead):
+    fail_counter = 0
+
+    processes = []
+    for i in range(num_tests):
+        processes.append(Process(target=fire_strat_custom_helper, args=(q,steps_ahead)))
+        processes[i].start()
+    for p in processes:
+        p.join()
+        if p.exitcode == 1:
+            fail_counter += 1
+    return 100 - ((fail_counter / num_tests) * 100)
+
+
+def fire_strat_custom_helper(q, steps_ahead):
+    path = create_fire_maze()
+    goal = board[len(board) - 1][len(board) - 1]
+    while True:
+        if path is None or path[1].on_fire:
+            sys.exit(1)
+            # return
+        current = path[1]
+        if current == goal:
+            sys.exit(0)
+            # return
+        # draw_maze(path)
+        # pygame.event.get()
+        compute_fire_movement(q)
+        if fire_distance(current) < 2:
+            fire_steps = []
+            for i in range(steps_ahead):
+                fire_steps.append(compute_fire_movement(q))
+            path = astar(current, goal, euclidean_dist)
+            if path is None and len(fire_steps) != 0:
+                reset_fire_prediction(fire_steps[-1])
+                del fire_steps[-1]
+                path = astar(current, goal, euclidean_dist)
+        else:
+            path = astar(current, goal, euclidean_dist)
+
+#helper function to find distance to fire from the passed location
+def fire_distance(start):
+    global fire_locations
+    m = manhattan_dist(start.row, start.col, fire_locations[0][0], fire_locations[0][1])
+    for locs in fire_locations:
+        if manhattan_dist(start.row, start.col, locs[0], locs[1]) < m:
+            m = manhattan_dist(start.row, start.col, locs[0], locs[1])
+    return m
+
+#resets fire predictions we created in our custom fire strategy
+def reset_fire_prediction(step):
+    for cell in step:
+        cell.on_fire = False
+
+#fire search our failed search algorithm using a modified dfs to load
+# neighbors into the fringe in order based on distance to goal and distance to fire
+def fire_search(start, goal):
+    fringe = PriorityQueue(-1)
+    discovered = [start]
+    backward_mapping = dict()
+    score = (10 * euclidean_dist(start.row, start.col, goal.row, goal.col)) #+ (fire_distance(start) * -.5)
+    fringe.put(PrioritizedItem(score, start))
+
+    if goal.on_fire:
+        return None
+    if astar(start, goal, euclidean_dist) is None:
+        return None
+    while not fringe.empty():
+        current = fringe.get().item
+        if current == goal:
+            return back_track(backward_mapping, start, current)
+        for neighbor in current.neighbors:
+            if neighbor not in discovered and not neighbor.on_fire:
+                discovered.append(neighbor)
+                backward_mapping[neighbor] = current
+                score = (10 * euclidean_dist(start.row, start.col, goal.row, goal.col)) #+ (fire_distance(start) * -.5)
+                fringe.put(PrioritizedItem(score, neighbor))
+    return None
 
 if __name__ == '__main__':
 
@@ -998,245 +1248,3 @@ if __name__ == '__main__':
                 q = round(q, 3)
     except ValueError:
         None
-
-
-#helper function for maze creation to initialize the graph of the maze
-def assign_board_neighbors(dim):
-    for row in range(dim):
-        for col in range(dim):
-            if row != 0:
-                if not board[row - 1][col].is_blocked:
-                    board[row][col].add_neighbor(board[row - 1][col])
-            if row != (dim - 1):
-                if not board[row + 1][col].is_blocked:
-                    board[row][col].add_neighbor(board[row + 1][col])
-            if col != 0:
-                if not board[row][col - 1].is_blocked:
-                    board[row][col].add_neighbor(board[row][col - 1])
-            if col != (dim - 1):
-                if not board[row][col + 1].is_blocked:
-                    board[row][col].add_neighbor(board[row][col + 1])
-
-
-def back_track(backward_mapping, start, current):
-    path = [current]
-    while current != start:
-        current = backward_mapping[current]
-        path.insert(0, current)
-    return path
-
-def intersection(list1, list2):
-    list2_as_set = set(list2)
-    intersect = [value for value in list1 if value in list2_as_set]
-    if len(intersect) == 0:
-        return None
-    return intersect
-
-def print_maze(path):
-    print("  \t", end='')
-    for i in range(len(board)):
-        print("\t" + str(i) + "\t", end='')
-    print()
-    for row in range(len(board)):
-        print("    ", end='')
-        for i in range(len(board)):
-            print("________", end='')
-        print()
-        for col in range(len(board[0]) + 1):
-            if col == 0:
-                print(str(row) + ":\t|", end='')
-            else:
-                print("|", end='')
-            if col < len(board[0]) and board[row][col] in path:
-                print("\t" + movement_symbol + "\t", end='')
-            else:
-                if col < len(board[0]) and board[row][col].is_blocked:
-                    print("\t" + block_symbol + "\t", end='')
-                elif col < len(board[0]) and board[row][col].on_fire:
-                    print("\t" + fire_symbol + "\t", end='')
-                else:
-                    print("\t \t", end='')
-        print()
-    print("    ", end='')
-    for i in range(len(board)):
-        print("________", end='')
-    print()
-
-
-def print_maze_nopath():
-    print("  \t", end='')
-    for i in range(len(board)):
-        print("\t" + str(i) + "\t", end='')
-    print()
-    for row in range(len(board)):
-        print("    ", end='')
-        for i in range(len(board)):
-            print("________", end='')
-        print()
-        for col in range(len(board[0]) + 1):
-            if col == 0:
-                print(str(row) + ":\t|", end='')
-            else:
-                print("|", end='')
-            if col < len(board[0]) and board[row][col].is_blocked:
-                print("\t" + block_symbol + "\t", end='')
-            elif col < len(board[0]) and board[row][col].on_fire:
-                print("\t" + fire_symbol + "\t", end='')
-            else:
-                print("\t \t", end='')
-        print()
-    print("    ", end='')
-    for i in range(len(board)):
-        print("________", end='')
-    print()
-
-
-def draw_maze(path):
-    if path is None:
-        return
-    for row in board:
-        for c in row:
-            if c.is_blocked:
-                pygame.draw.rect(screen, BLACK, (c.row * width, c.col * width, width, width))
-            elif c.on_fire:
-                pygame.draw.rect(screen, RED, (c.row * width, c.col * width, width, width))
-            elif c in path:
-                pygame.draw.rect(screen, GREEN, (c.row * width, c.col * width, width, width))
-            else:
-                pygame.draw.rect(screen, WHITE, (c.row * width, c.col * width, width, width))
-    pygame.display.update()
-
-# Multi Process version To go quicker but does not display the maze!!
-def fire_strat_2_multi_proc(q, num_tests):
-    fail_counter = 0
-
-    processes = []
-    # print("starting ", end="")
-    for i in range(num_tests):
-        print("\r Running Test " + str(i), end="")
-        processes.append(Process(target=fire_strat_2_helper, args=(q,)))
-        processes[i].start()
-        # print("\r" + str(i), end="")
-    # print("\nJoining ", end="")
-    for p in processes:
-        p.join()
-        # print("#", end="")
-        # print(p.exitcode)
-        if p.exitcode == 1:
-            fail_counter += 1
-    # print("Fail Counter: " + str(fail_counter))
-    print("\r", end="")
-    return 100 - ((fail_counter / num_tests) * 100)
-
-
-def fire_strat_2_helper(q):
-    path = create_fire_maze()
-    goal = board[len(board) - 1][len(board) - 1]
-    while True:
-        if path is None or path[1].on_fire:
-            sys.exit(1)
-            # return
-        if path[1] == goal:
-            sys.exit(0)
-            # return
-        compute_fire_movement(q)
-        if path[1].on_fire:
-            sys.exit(1)
-        path = astar(path[1], goal, euclidean_dist)
-
-
-# Multi Process version To go quicker but does not display the maze!!
-def fire_strat_custom_multi_proc(q, num_tests,steps_ahead):
-    fail_counter = 0
-
-    processes = []
-    for i in range(num_tests):
-        processes.append(Process(target=fire_strat_custom_helper, args=(q,steps_ahead)))
-        processes[i].start()
-    for p in processes:
-        p.join()
-        if p.exitcode == 1:
-            fail_counter += 1
-    return 100 - ((fail_counter / num_tests) * 100)
-
-
-def fire_strat_custom_helper(q, steps_ahead):
-    path = create_fire_maze()
-    goal = board[len(board) - 1][len(board) - 1]
-    while True:
-        if path is None or path[1].on_fire:
-            sys.exit(1)
-            # return
-        current = path[1]
-        if current == goal:
-            sys.exit(0)
-            # return
-        # draw_maze(path)
-        # pygame.event.get()
-        compute_fire_movement(q)
-        if fire_distance(current) < 2:
-            fire_steps = []
-            for i in range(steps_ahead):
-                fire_steps.append(compute_fire_movement(q))
-            path = astar(current, goal, euclidean_dist)
-            if path is None and len(fire_steps) != 0:
-                reset_fire_prediction(fire_steps[-1])
-                del fire_steps[-1]
-                path = astar(current, goal, euclidean_dist)
-        else:
-            path = astar(current, goal, euclidean_dist)
-
-
-def fire_search(start, goal):
-    fringe = PriorityQueue(-1)
-    discovered = [start]
-    backward_mapping = dict()
-    score = (10 * euclidean_dist(start.row, start.col, goal.row, goal.col)) #+ (fire_distance(start) * -.5)
-    fringe.put(PrioritizedItem(score, start))
-
-    if goal.on_fire:
-        return None
-    if astar(start, goal, euclidean_dist) is None:
-        return None
-    while not fringe.empty():
-        current = fringe.get().item
-        if current == goal:
-            return back_track(backward_mapping, start, current)
-        for neighbor in current.neighbors:
-            if neighbor not in discovered and not neighbor.on_fire:
-                discovered.append(neighbor)
-                backward_mapping[neighbor] = current
-                score = (10 * euclidean_dist(start.row, start.col, goal.row, goal.col)) #+ (fire_distance(start) * -.5)
-                fringe.put(PrioritizedItem(score, neighbor))
-    return None
-
-def fire_distance(start):
-    global fire_locations
-    m = manhattan_dist(start.row, start.col, fire_locations[0][0], fire_locations[0][1])
-    for locs in fire_locations:
-        if manhattan_dist(start.row, start.col, locs[0], locs[1]) < m:
-            m = manhattan_dist(start.row, start.col, locs[0], locs[1])
-    return m
-
-def reset_fire_prediction(step):
-    for cell in step:
-        cell.on_fire = False
-
-def compute_fire_movement(q):
-    new_on_fire = []
-    for row in board:
-        for cell in row:
-            if cell.on_fire:
-                continue
-            on_fire_count = 0
-            for neighbor in cell.neighbors:
-                if neighbor.on_fire:
-                    on_fire_count += 1
-            if on_fire_count >= 1:
-                p = 1 - ((1 - q) ** on_fire_count)
-                if random.random() < p:
-                    cell.set_fire_status(True)
-                    fire_locations.append((cell.row, cell.col))
-                    # fire_locations.sort(key=lambda x: x[0])
-                    new_on_fire.append(cell)
-    return new_on_fire
