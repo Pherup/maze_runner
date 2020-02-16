@@ -69,7 +69,92 @@ def create_maze(dim, p):
     assign_board_neighbors(dim)
 
 
-def create_hard_maze(dim, p):
+def create_hard_maze_dfs_max_fringe(dim, p):
+    global max_fringe_size
+    create_maze(dim, p)
+    max_path = dfs(board[0][0], board[dim-1][dim-1])
+    while len(max_path) < 1:
+        create_maze(dim, p)
+        max_path = dfs(board[0][0], board[dim-1][dim-1])
+    t = 1
+    no_change = 0
+    hard_fringe_size = max_fringe_size
+    print(hard_fringe_size)
+    print_maze_nopath()
+    print_maze(max_path)
+    while no_change < 2*dim**2:
+        temperature = 1/t
+        row_rand = random.randrange(0,dim)
+        col_rand = random.randrange(0,dim)
+        if not((row_rand == dim-1) and (col_rand == dim-1)) and not((row_rand == 0) and (col_rand == 0)):
+
+            if board[row_rand][col_rand].is_blocked:
+                board[row_rand][col_rand].set_block_status(False)
+            else:
+                board[row_rand][col_rand].set_block_status(True)
+            assign_board_neighbors(dim)
+            temp_path = dfs(board[0][0],board[dim - 1][dim - 1])
+            temp_fringe_size = max_fringe_size
+            P = math.exp(-0.1*(hard_fringe_size-temp_fringe_size)/temperature)
+            if (temp_fringe_size > hard_fringe_size) or (temp_fringe_size < hard_fringe_size and random.random() < P):
+                hard_fringe_size = temp_fringe_size
+                max_path = temp_path
+                t += 1
+                no_change = 0
+                print(hard_fringe_size)
+            else:
+                no_change += 1
+                if board[row_rand][col_rand].is_blocked:
+                    board[row_rand][col_rand].set_block_status(False)
+                else:
+                    board[row_rand][col_rand].set_block_status(True)
+
+
+    print_maze_nopath()
+    print_maze(max_path)
+    print(hard_fringe_size)
+    return None
+
+def create_hard_maze_manhattan_max_nodes(dim, p):
+    global board
+    create_maze(dim, p)
+    (max_path) = astar(board[0][0], board[dim-1][dim-1], manhattan_dist)
+    while len(max_path) < 1:
+        create_maze(dim, p)
+        (max_path) = astar(board[0][0], board[dim-1][dim-1], manhattan_dist)
+    t = 1
+    no_change = 0
+    hard_node_size = num_nodes_explored
+    print(hard_node_size)
+    print_maze_nopath()
+    print_maze(max_path)
+    while no_change < dim**2:
+        temperature= 1/t
+        row_rand = random.randrange(0,dim)
+        col_rand = random.randrange(0,dim)
+        if not((row_rand == dim-1) and (col_rand == dim-1)) and not((row_rand == 0) and (col_rand == 0)):
+            if board[row_rand][col_rand].is_blocked:
+                board[row_rand][col_rand].set_block_status(False)
+            else:
+                board[row_rand][col_rand].set_block_status(True)
+            assign_board_neighbors(dim)
+            temp_path = astar(board[0][0], board[dim-1][dim-1], manhattan_dist)
+            P = math.exp(-0.1*(hard_node_size-num_nodes_explored)/temperature)
+            if (num_nodes_explored > hard_node_size) or (num_nodes_explored < hard_node_size and random.random() < P):
+                hard_node_size = num_nodes_explored
+                max_path = temp_path
+                t += 1
+                no_change = 0
+            else:
+                no_change += 1
+                if board[row_rand][col_rand].is_blocked:
+                    board[row_rand][col_rand].set_block_status(False)
+                else:
+                    board[row_rand][col_rand].set_block_status(True)
+
+    print_maze_nopath()
+    print_maze(max_path)
+    print(hard_node_size)
     return None
 
 
